@@ -257,7 +257,7 @@ elif st.session_state.current_page == "Messages":
 
 # WEATHER
 elif st.session_state.current_page == "Weather":
-    st.title("🌤️ SkyView Weather")
+    st.title("🌤️ SkyView Weather not ready")
     loc = st.text_input("Enter City:", "Pallikal")
     if st.button("Get Weather", key="btn_get_weather"):
         try:
