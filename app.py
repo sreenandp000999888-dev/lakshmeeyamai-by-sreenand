@@ -280,7 +280,7 @@ elif st.session_state.current_page == "Messages":
 # WEATHER
 elif st.session_state.current_page == "Weather":
     st.title("🌤️ SkyView Weather")
-    loc = st.text_input("Enter City:", "Pallikal")
+    loc = st.text_input("Enter City:", "")
     if st.button("Get Weather", key="btn_get_weather"):
         try:
             g = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={loc}&count=1").json()
