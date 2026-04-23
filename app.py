@@ -1,151 +1,289 @@
 import streamlit as st
-from groq import Groq  # <-- New Import
+from groq import Groq
 import json
 import os
 import time
 from datetime import datetime
+import requests
 
-# --- 1. PAGE CONFIG ---
-st.set_page_config(page_title="ai by sreenand", page_icon="🤖", layout="wide")
+# --- 1. PAGE CONFIG & FUTURISTIC STYLING ---
+st.set_page_config(page_title="Lakshmeeyam AI", page_icon="🤖", layout="wide")
 
-st.markdown("<style>.stAppDeployButton { display: none !important; }</style>", unsafe_allow_html=True)
+# Custom CSS for the deep-space theme and glass-morphism boxes
+st.markdown("""
+    <style>
+    .stApp {
+        background: url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2072");
+        background-size: cover;
+    }
+    .main-box {
+        background-color: rgba(0, 0, 0, 0.85);
+        padding: 25px;
+        border-radius: 15px;
+        border: 1px solid #00d4ff;
+        color: white;
+        margin-bottom: 20px;
+        box-shadow: 0px 0px 15px rgba(0, 212, 255, 0.3);
+    }
+    .stAppDeployButton { display: none !important; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+        color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 2. DATABASE HELPERS ---
-DB_FILE = "users.json"
+USERS_FILE = "users.json"
+CHATS_FILE = "ai_chats.json"
+MESSAGES_FILE = "user_messages.json"
 
 
-def load_users():
-    if not os.path.exists(DB_FILE): return {"admin": "admin123"}
-    with open(DB_FILE, "r") as f: return json.load(f)
+def load_data(file, default):
+    if not os.path.exists(file):
+        with open(file, "w") as f: json.dump(default, f)
+        return default
+    with open(file, "r") as f:
+        try:
+            return json.load(f)
+        except:
+            return default
 
 
-def save_user(username, password):
-    users = load_users()
-    users[username] = password
-    with open(DB_FILE, "w") as f: json.dump(users, f)
+def save_data(file, data):
+    with open(file, "w") as f: json.dump(data, f)
 
+
+# Initialize and Auto-Upgrade Databases
+db_users = load_data(USERS_FILE, {})
+for u in db_users:
+    if isinstance(db_users[u], str):
+        db_users[u] = {"password": db_users[u], "friends": [], "requests": []}
+    if "requests" not in db_users[u]:
+        db_users[u]["requests"] = []
+save_data(USERS_FILE, db_users)
+
+db_chats = load_data(CHATS_FILE, {})
+db_messages = load_data(MESSAGES_FILE, {})
 
 # --- 3. SESSION STATE ---
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "all_chats" not in st.session_state:
-    st.session_state.all_chats = {"New Chat": []}
-if "active_chat" not in st.session_state:
-    st.session_state.active_chat = "New Chat"
-if "request_timestamps" not in st.session_state:
-    st.session_state.request_timestamps = []
-if "processing" not in st.session_state:
-    st.session_state.processing = False
+if "logged_in" not in st.session_state: st.session_state.logged_in = False
+if "user" not in st.session_state: st.session_state.user = None
+if "current_page" not in st.session_state: st.session_state.current_page = "Dashboard"
+if "active_chat" not in st.session_state: st.session_state.active_chat = "New Chat"
+if "processing" not in st.session_state: st.session_state.processing = False
 
-
-# --- 4. RPM LIMITER (Groq allows 30 RPM for free) ---
-def check_rpm_limit(limit=30):
-    current_time = time.time()
-    st.session_state.request_timestamps = [t for t in st.session_state.request_timestamps if current_time - t < 60]
-    return len(st.session_state.request_timestamps) < limit
-
-
-# --- 5. LOGIN SYSTEM --- (No changes needed)
+# --- 4. WELCOME & LOGIN ---
 if not st.session_state.logged_in:
-    st.title("🎉Lakshmeeyam ai Login🎈")
-    tab1, tab2 = st.tabs(["Login", "Sign Up"])
-    with tab1:
-        u = st.text_input("Username", key="login_u")
-        p = st.text_input("Password", type="password", key="login_p")
-        if st.button("Log In"):
-            db = load_users()
-            if u in db and db[u] == p:
-                st.session_state.logged_in, st.session_state.user = True, u
-                st.rerun()
-            else:
-                st.error("Invalid credentials")
-    with tab2:
-        nu = st.text_input("New Username", key="reg_u")
-        np = st.text_input("New Password", type="password", key="reg_p")
-        if st.button("Create Account"):
-            if nu and np:
-                save_user(nu, np)
-                st.success("Account created!")
-            else:
-                st.error("Fill all fields")
+    st.markdown(
+        "<h1 style='text-align: center; color: #00d4ff; text-shadow: 2px 2px 10px #00d4ff;'>🚀 LAKSHMEEYAM AI</h1>",
+        unsafe_allow_html=True)
+
+    col_l, _, col_r = st.columns([1.5, 0.1, 1])
+    with col_l:
+        st.markdown("""
+        <div class='main-box'>
+            <h2 style='color: #00d4ff;'>👨‍💻 About the Creator</h2>
+            <p><b>Lakshmeeyam AI</b> is a digital ecosystem built by <b>Sreenand-P</b>.</p>
+            <p>At 14 years old, Sreenand created this platform as a hobby to integrate modern AI tools with a social messaging network.</p>
+            <hr style='border-color: #333;'>
+            <ul>
+                <li><b>Custom AI:</b> Powered by Groq Llama 3.1</li>
+                <li><b>Friend System:</b> Send requests and chat in real-time</li>
+                <li><b>Live Weather:</b> Global tracking via Open-Meteo</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_r:
+        st.markdown("<div class='main-box'>", unsafe_allow_html=True)
+        st.subheader("🔐 Access Portal")
+        t1, t2 = st.tabs(["Login", "Sign Up"])
+        with t1:
+            u_in = st.text_input("Username")
+            p_in = st.text_input("Password", type="password")
+            if st.button("Log In", use_container_width=True):
+                if u_in in db_users and db_users[u_in]["password"] == p_in:
+                    st.session_state.logged_in, st.session_state.user = True, u_in
+                    if u_in not in db_chats: db_chats[u_in] = {"New Chat": []}
+                    save_data(CHATS_FILE, db_chats)
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid Username or Password")
+        with t2:
+            nu = st.text_input("New Username")
+            np = st.text_input("New Password", type="password")
+            if st.button("Create Account", use_container_width=True):
+                if nu and np and nu not in db_users:
+                    db_users[nu] = {"password": np, "friends": [], "requests": []}
+                    save_data(USERS_FILE, db_users)
+                    st.success("Account Ready! Please Log In.")
+        st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# --- 6. SIDEBAR ---
+# --- 5. SIDEBAR NAVIGATION & NOTIFICATIONS ---
 with st.sidebar:
-    st.title("Groq Cloud")
-    if st.button("➕ New Chat", use_container_width=True, disabled=st.session_state.processing):
-        temp_name = f"New Chat {datetime.now().strftime('%H%M%S')}"
-        st.session_state.all_chats[temp_name] = []
-        st.session_state.active_chat = temp_name
+    # Notification logic
+    pending = len(db_users[st.session_state.user].get("requests", []))
+    msg_label = f"💬 Messaging" + (f" (🔴 {pending})" if pending > 0 else "")
+
+    st.markdown(f"<h2 style='color:#00d4ff;'>Welcome, {st.session_state.user}</h2>", unsafe_allow_html=True)
+    if st.button("🏠 Dashboard", use_container_width=True): st.session_state.current_page = "Dashboard"
+    if st.button("🤖 AI Lab", use_container_width=True): st.session_state.current_page = "AI Chat"
+    if st.button(msg_label, use_container_width=True): st.session_state.current_page = "Messages"
+    if st.button("🌤️ Weather", use_container_width=True): st.session_state.current_page = "Weather"
+    st.write("---")
+    if st.button("🚪 Logout", use_container_width=True):
+        st.session_state.logged_in = False
         st.rerun()
 
-    st.write("---")
-    st.subheader("Recent")
-    for chat_title in reversed(list(st.session_state.all_chats.keys())):
-        if st.button(f"💬 {chat_title}", key=chat_title, use_container_width=True, disabled=st.session_state.processing):
-            st.session_state.active_chat = chat_title
+# --- 6. PAGES ---
+
+# DASHBOARD
+if st.session_state.current_page == "Dashboard":
+    st.title("📱 Tech Dashboard")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown("<div class='main-box'><h3>🤖 AI Lab</h3><p>Chat with Groq Llama</p></div>", unsafe_allow_html=True)
+        if st.button("Open AI", use_container_width=True):
+            st.session_state.current_page = "AI Chat"
+            st.rerun()
+    with c2:
+        st.markdown("<div class='main-box'><h3>💬 Messaging</h3><p>Inbox & Chat</p></div>", unsafe_allow_html=True)
+        if st.button("Open Messages", use_container_width=True):
+            st.session_state.current_page = "Messages"
+            st.rerun()
+    with c3:
+        st.markdown("<div class='main-box'><h3>🌤️ SkyView</h3><p>Live Weather</p></div>", unsafe_allow_html=True)
+        if st.button("Open Weather", use_container_width=True):
+            st.session_state.current_page = "Weather"
             st.rerun()
 
-# --- 7. GROQ CONFIG ---
-# Get your key at https://console.groq.com/keys
-GROQ_API_KEY = "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"
-client = Groq(api_key=GROQ_API_KEY)
+# AI CHAT
+elif st.session_state.current_page == "AI Chat":
+    st.title("🤖 AI Lab")
+    client = Groq(api_key="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")
 
-# Llama 3.1 8B is the best for high daily limits (14,400 RPD)
-MODEL_NAME = "llama-3.1-8b-instant"
+    my_h = db_chats[st.session_state.user]
+    with st.sidebar:
+        if st.button("➕ New Session", use_container_width=True):
+            name = f"Chat {datetime.now().strftime('%H:%M:%S')}"
+            my_h[name] = []
+            st.session_state.active_chat = name
+            save_data(CHATS_FILE, db_chats)
+            st.rerun()
+        for t in reversed(list(my_h.keys())):
+            if st.button(f"💬 {t}", use_container_width=True):
+                st.session_state.active_chat = t
+                st.rerun()
 
-messages = st.session_state.all_chats[st.session_state.active_chat]
-st.header(st.session_state.active_chat)
+    msgs = my_h.get(st.session_state.active_chat, [])
+    for m in msgs:
+        with st.chat_message(m["role"]): st.write(m["content"])
 
-for msg in messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# --- 8. CHAT INPUT & LOCKING ---
-prompt = st.chat_input(
-    "Ask anything..." if not st.session_state.processing else "Groq is processing...",
-    disabled=st.session_state.processing
-)
-
-if prompt:
-    if not check_rpm_limit(30):
-        st.error("🚦 Rate Limit Reached! Wait a minute.")
-    else:
+    p = st.chat_input("Ask Lakshmeeyam AI anything...")
+    if p:
         st.session_state.processing = True
-        messages.append({"role": "user", "content": prompt})
-        st.session_state.request_timestamps.append(time.time())
+        msgs.append({"role": "user", "content": p})
+        save_data(CHATS_FILE, db_chats)
         st.rerun()
 
-if st.session_state.processing and messages and messages[-1]["role"] == "user":
-    user_query = messages[-1]["content"]
+    if st.session_state.processing:
+        with st.chat_message("assistant"):
+            sys = {"role": "system", "content": "You are Lakshmeeyam AI, created by Sreenand. Be helpful and smart."}
+            res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[sys] + msgs)
+            ans = res.choices[0].message.content
+            msgs.append({"role": "assistant", "content": ans})
+            save_data(CHATS_FILE, db_chats)
+            st.session_state.processing = False
+            st.rerun()
 
-    # 1. Auto-Naming
-    if len(messages) == 1:
-        try:
-            t_res = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[{"role": "user", "content": f"Summarize into 2 words: '{user_query}'"}]
-            )
-            new_title = t_res.choices[0].message.content.strip().replace('"', '')[:30]
-            st.session_state.all_chats[new_title] = st.session_state.all_chats.pop(st.session_state.active_chat)
-            st.session_state.active_chat = new_title
-        except:
-            pass
+# MESSAGING
+elif st.session_state.current_page == "Messages":
+    st.title("📫 Communication Center")
+    t_chat, t_inbox = st.tabs(["💬 Direct Messages", "📥 Inbox & Requests"])
+    u_data = db_users[st.session_state.user]
 
-    # 2. Get AI Response
-    with st.chat_message("assistant"):
-        with st.spinner("⚡ Lightning fast thinking..."):
-            try:
-                # Groq uses standard message list format
-                response = client.chat.completions.create(
-                    model=MODEL_NAME,
-                    messages=[{"role": m["role"], "content": m["content"]} for m in messages],
-                )
-                full_text = response.choices[0].message.content
-                messages.append({"role": "assistant", "content": full_text})
+    with t_inbox:
+        st.subheader("Add Friend")
+        target = st.text_input("Enter Username")
+        if st.button("Send Friend Request"):
+            if target in db_users and target != st.session_state.user:
+                if st.session_state.user not in db_users[target]["requests"]:
+                    db_users[target]["requests"].append(st.session_state.user)
+                    save_data(USERS_FILE, db_users)
+                    st.success(f"Request sent to {target}!")
+                else:
+                    st.warning("Request already pending.")
+            else:
+                st.error("User not found.")
 
-                st.session_state.processing = False
+        st.write("---")
+        st.subheader("Pending Requests")
+        for r in u_data["requests"]:
+            cl, ca, cd = st.columns([2, 1, 1])
+            cl.write(f"**{r}** wants to be friends.")
+            if ca.button("Accept", key=f"acc_{r}"):
+                u_data["friends"].append(r)
+                db_users[r]["friends"].append(st.session_state.user)
+                u_data["requests"].remove(r)
+                save_data(USERS_FILE, db_users)
                 st.rerun()
-            except Exception as e:
-                st.error(f"Groq Error: {e}")
-                st.session_state.processing = False
+            if cd.button("Decline", key=f"dec_{r}"):
+                u_data["requests"].remove(r)
+                save_data(USERS_FILE, db_users)
+                st.rerun()
+
+    with t_chat:
+        friends = u_data["friends"]
+        if not friends:
+            st.info("You don't have any friends yet. Use the 'Inbox' tab to add some!")
+        else:
+            fl, cl = st.columns([1, 2])
+            with fl:
+                for f in friends:
+                    if st.button(f"👤 {f}", use_container_width=True):
+                        st.session_state.msg_target = f
+
+            with cl:
+                dest = st.session_state.get("msg_target")
+                if dest:
+                    st.write(f"### Chat with {dest}")
+                    cid = "_".join(sorted([st.session_state.user, dest]))
+                    if cid not in db_messages: db_messages[cid] = []
+
+                    for m in db_messages[cid]:
+                        role = "user" if m["sender"] == st.session_state.user else "assistant"
+                        with st.chat_message(role):
+                            st.write(f"**{m['sender']}**: {m['text']}")
+
+                    txt = st.chat_input(f"Send message to {dest}...")
+                    if txt:
+                        db_messages[cid].append({"sender": st.session_state.user, "text": txt})
+                        save_data(MESSAGES_FILE, db_messages)
+                        st.rerun()
+                else:
+                    st.info("Select a friend to start chatting.")
+
+# WEATHER
+elif st.session_state.current_page == "Weather":
+    st.title("🌤️ SkyView Weather")
+    loc = st.text_input("Enter City or Village:", "Pallikal")
+    if st.button("Get Weather"):
+        try:
+            g = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={loc}&count=1").json()
+            if "results" in g:
+                r = g["results"][0]
+                w = requests.get(
+                    f"https://api.open-meteo.com/v1/forecast?latitude={r['latitude']}&longitude={r['longitude']}&current_weather=true").json()
+                curr = w["current_weather"]
+                st.success(f"Weather for {loc.title()}, {r['country']}")
+                w1, w2 = st.columns(2)
+                w1.metric("Temperature", f"{curr['temperature']}°C")
+                w2.metric("Wind Speed", f"{curr['windspeed']} km/h")
+            else:
+                st.error("Location not found.")
+        except:
+            st.error("Connection error. Please check your internet.")
