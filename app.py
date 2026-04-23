@@ -2,7 +2,7 @@ import streamlit as st
 from groq import Groq
 import json
 import os
-import secrets  # For generating secure tokens
+import secrets
 from datetime import datetime
 import requests
 import hashlib
@@ -40,44 +40,37 @@ USERS_FILE = "users.json"
 CHATS_FILE = "ai_chats.json"
 MESSAGES_FILE = "user_messages.json"
 
-
 def hash_password(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
-
 
 def load_data(file, default):
     if not os.path.exists(file):
         with open(file, "w") as f: json.dump(default, f)
         return default
     with open(file, "r") as f:
-        try:
-            return json.load(f)
-        except:
-            return default
-
+        try: return json.load(f)
+        except: return default
 
 def save_data(file, data):
     with open(file, "w") as f: json.dump(data, f)
-
 
 db_users = load_data(USERS_FILE, {})
 db_chats = load_data(CHATS_FILE, {})
 db_messages = load_data(MESSAGES_FILE, {})
 
-# --- 3. PERSISTENT LOGIN LOGIC (TOKEN BASED) ---
+# --- 3. PERSISTENT LOGIN LOGIC ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-    # Check if a token exists in the URL
     url_token = st.query_params.get("token")
     if url_token:
-        # Scan database for a user matching this token
         for username, data in db_users.items():
             if data.get("token") == url_token:
                 st.session_state.logged_in = True
                 st.session_state.user = username
                 break
 
-if "current_page" not in st.session_state: st.session_state.current_page = "Dashboard"
+# FIXED: Ensure default page matches the logic below
+if "current_page" not in st.session_state: st.session_state.current_page = "home"
 if "active_chat" not in st.session_state: st.session_state.active_chat = "New Chat"
 if "processing" not in st.session_state: st.session_state.processing = False
 
@@ -107,19 +100,15 @@ if not st.session_state.logged_in:
             u_in = st.text_input("Username")
             p_in = st.text_input("Password", type="password")
             if st.button("Log In", use_container_width=True):
-                # Check for hashed password or plain text (for old accounts)
                 if u_in in db_users:
                     stored_pw = db_users[u_in]["password"]
                     if stored_pw == p_in or stored_pw == hash_password(p_in):
-                        # GENERATE SECURE TOKEN
                         new_token = secrets.token_hex(16)
                         db_users[u_in]["token"] = new_token
                         save_data(USERS_FILE, db_users)
-
                         st.session_state.logged_in = True
                         st.session_state.user = u_in
-                        st.query_params["token"] = new_token  # Push token to URL
-
+                        st.query_params["token"] = new_token
                         if u_in not in db_chats: db_chats[u_in] = {"New Chat": []}
                         save_data(CHATS_FILE, db_chats)
                         st.rerun()
@@ -138,14 +127,21 @@ if not st.session_state.logged_in:
 # --- 5. SIDEBAR NAVIGATION ---
 with st.sidebar:
     st.markdown(f"<h2 style='color:#00d4ff;'>Welcome, {st.session_state.user}</h2>", unsafe_allow_html=True)
-    if st.button("🏠 home", use_container_width=True): st.session_state.current_page = "Dashboard"
-    if st.button("🤖 AI", use_container_width=True): st.session_state.current_page = "AI Chat"
-    if st.button("💬 Messaging", use_container_width=True): st.session_state.current_page = "Messages"
-    if st.button("🌤️ Weather", use_container_width=True): st.session_state.current_page = "Weather"
+    # FIXED: Changed "Dashboard" to "home" to match logic below
+    if st.button("🏠 home", use_container_width=True): 
+        st.session_state.current_page = "home"
+        st.rerun()
+    if st.button("🤖 AI", use_container_width=True): 
+        st.session_state.current_page = "AI Chat"
+        st.rerun()
+    if st.button("💬 Messaging", use_container_width=True): 
+        st.session_state.current_page = "Messages"
+        st.rerun()
+    if st.button("🌤️ Weather", use_container_width=True): 
+        st.session_state.current_page = "Weather"
+        st.rerun()
     st.write("---")
-
     if st.button("🔐 Logout", use_container_width=True, key="sidebar_logout"):
-        # Clear token from DB on logout
         if st.session_state.user in db_users:
             db_users[st.session_state.user]["token"] = ""
             save_data(USERS_FILE, db_users)
@@ -155,34 +151,32 @@ with st.sidebar:
 
 # --- 6. PAGES ---
 
-# DASHBOARD
+# HOME PAGE
 if st.session_state.current_page == "home":
     st.title("🏠 home")
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("<div class='main-box'><h3>🤖 AI Lab</h3><p>Chat with Groq Llama</p></div>", unsafe_allow_html=True)
         if st.button("Open AI", use_container_width=True, key="dash_ai"):
-            st.session_state.current_page = "AI Chat";
+            st.session_state.current_page = "AI Chat"
             st.rerun()
     with c2:
         st.markdown("<div class='main-box'><h3>💬 Messaging</h3><p>Inbox & Chat</p></div>", unsafe_allow_html=True)
         if st.button("Open Messages", use_container_width=True, key="dash_msg"):
-            st.session_state.current_page = "Messages";
+            st.session_state.current_page = "Messages"
             st.rerun()
     with c3:
         st.markdown("<div class='main-box'><h3>🌤️ SkyView</h3><p>Live Weather</p></div>", unsafe_allow_html=True)
         if st.button("Open Weather", use_container_width=True, key="dash_weather"):
-            st.session_state.current_page = "Weather";
+            st.session_state.current_page = "Weather"
             st.rerun()
 
 # AI CHAT
 elif st.session_state.current_page == "AI Chat":
     st.title("🤖 grok AI")
     client = Groq(api_key="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")
-
     if st.session_state.user not in db_chats:
         db_chats[st.session_state.user] = {"New Chat": []}
-
     my_h = db_chats[st.session_state.user]
 
     with st.sidebar:
@@ -192,7 +186,6 @@ elif st.session_state.current_page == "AI Chat":
             my_h["New Chat"] = []
             save_data(CHATS_FILE, db_chats)
             st.rerun()
-
         st.write("#### History")
         for t in reversed(list(my_h.keys())):
             if st.button(f"💬 {t}", use_container_width=True, key=f"hist_{t}"):
@@ -217,19 +210,15 @@ elif st.session_state.current_page == "AI Chat":
             res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=[sys] + msgs)
             ans = res.choices[0].message.content
             msgs.append({"role": "assistant", "content": ans})
-
             if st.session_state.active_chat == "New Chat" and len(msgs) >= 2:
-                rename_req = [{"role": "system", "content": "Title this topic in 2 words. No dots."},
-                              {"role": "user", "content": msgs[0]['content']}]
+                rename_req = [{"role": "system", "content": "Title this topic in 2 words. No dots."}, {"role": "user", "content": msgs[0]['content']}]
                 try:
                     rn_res = client.chat.completions.create(model="llama-3.1-8b-instant", messages=rename_req)
                     new_title = rn_res.choices[0].message.content.strip()
                     if new_title in my_h: new_title += f" ({datetime.now().strftime('%H:%M')})"
                     my_h[new_title] = my_h.pop("New Chat")
                     st.session_state.active_chat = new_title
-                except:
-                    pass
-
+                except: pass
             save_data(CHATS_FILE, db_chats)
             st.session_state.processing = False
             st.rerun()
@@ -249,9 +238,7 @@ elif st.session_state.current_page == "Messages":
                     db_users[target].setdefault("requests", []).append(st.session_state.user)
                     save_data(USERS_FILE, db_users)
                     st.success(f"Request sent to {target}!")
-            else:
-                st.error("User not found.")
-
+            else: st.error("User not found.")
         st.write("---")
         for r in u_data.get("requests", []):
             cl, ca, cd = st.columns([2, 1, 1])
@@ -260,17 +247,16 @@ elif st.session_state.current_page == "Messages":
                 u_data.setdefault("friends", []).append(r)
                 db_users[r].setdefault("friends", []).append(st.session_state.user)
                 u_data["requests"].remove(r)
-                save_data(USERS_FILE, db_users);
+                save_data(USERS_FILE, db_users)
                 st.rerun()
             if cd.button("Decline", key=f"dec_{r}"):
-                u_data["requests"].remove(r);
-                save_data(USERS_FILE, db_users);
+                u_data["requests"].remove(r)
+                save_data(USERS_FILE, db_users)
                 st.rerun()
 
     with t_chat:
         friends = u_data.get("friends", [])
-        if not friends:
-            st.info("No friends yet.")
+        if not friends: st.info("No friends yet.")
         else:
             fl, cl = st.columns([1, 2])
             with fl:
@@ -288,24 +274,22 @@ elif st.session_state.current_page == "Messages":
                     txt = st.chat_input(f"Send to {dest}...")
                     if txt:
                         db_messages[cid].append({"sender": st.session_state.user, "text": txt})
-                        save_data(MESSAGES_FILE, db_messages);
+                        save_data(MESSAGES_FILE, db_messages)
                         st.rerun()
 
 # WEATHER
 elif st.session_state.current_page == "Weather":
-    st.title("🌤️ SkyView Weather not ready ")
-    loc = st.text_input("Enter City:", "")
+    st.title("🌤️ SkyView Weather")
+    loc = st.text_input("Enter City:", "Pallikal")
     if st.button("Get Weather", key="btn_get_weather"):
         try:
             g = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={loc}&count=1").json()
             if "results" in g:
                 r = g["results"][0]
-                w = requests.get(
-                    f"https://api.open-meteo.com/v1/forecast?latitude={r['latitude']}&longitude={r['longitude']}&current_weather=true").json()
+                w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={r['latitude']}&longitude={r['longitude']}&current_weather=true").json()
                 curr = w["current_weather"]
                 st.success(f"Weather for {loc.title()}")
                 w1, w2 = st.columns(2)
                 w1.metric("Temperature", f"{curr['temperature']}°C")
                 w2.metric("Wind Speed", f"{curr['windspeed']} km/h")
-        except:
-            st.error("Error connecting to weather service.")
+        except: st.error("Error connecting to weather service.")
