@@ -54,8 +54,15 @@ db_users = load_data(USERS_FILE, {})
 db_chats = load_data(CHATS_FILE, {})
 db_messages = load_data(MESSAGES_FILE, {})
 
-# --- 3. SESSION STATE ---
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
+# --- 3. PERSISTENT LOGIN LOGIC ---
+# This checks the URL for a 'user' parameter to keep you logged in on refresh
+if "logged_in" not in st.session_state:
+    if "user" in st.query_params:
+        st.session_state.logged_in = True
+        st.session_state.user = st.query_params["user"]
+    else:
+        st.session_state.logged_in = False
+
 if "user" not in st.session_state: st.session_state.user = None
 if "current_page" not in st.session_state: st.session_state.current_page = "Dashboard"
 if "active_chat" not in st.session_state: st.session_state.active_chat = "New Chat"
@@ -70,13 +77,12 @@ if not st.session_state.logged_in:
         <div class='main-box'>
             <h2 style='color: #00d4ff;'>👨‍💻 About the Creator</h2>
             <p><b>Lakshmeeyam AI</b> is a digital ecosystem built by <b>Sreenand-P</b>.</p>
-            <p>At 14 years old, Sreenand created this platform as a hobby to integrate modern AI tools with a social messaging network.</p>
+            <p>At 14 years old, Sreenand created this platform as a hobby to integrate AI tools with a social network.</p>
             <hr style='border-color: #333;'>
             <ul>
                 <li><b>Custom AI:</b> Powered by Groq Llama 3.1</li>
-                <li><b>Smart Topics:</b> AI automatically names your chats</li>
-                <li><b>Friend System:</b> Send requests and chat in real-time</li>
-                <li><b>Live Weather:</b> Global tracking via Open-Meteo</li>
+                <li><b>Auto-Save:</b> Stays logged in via URL parameters</li>
+                <li><b>Friend System:</b> Messaging in real-time</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
@@ -89,7 +95,9 @@ if not st.session_state.logged_in:
             p_in = st.text_input("Password", type="password")
             if st.button("Log In", use_container_width=True):
                 if u_in in db_users and db_users[u_in]["password"] == p_in:
-                    st.session_state.logged_in, st.session_state.user = True, u_in
+                    st.session_state.logged_in = True
+                    st.session_state.user = u_in
+                    st.query_params["user"] = u_in # Save to URL
                     if u_in not in db_chats: db_chats[u_in] = {"New Chat": []}
                     save_data(CHATS_FILE, db_chats)
                     st.rerun()
@@ -114,9 +122,9 @@ with st.sidebar:
     if st.button("🌤️ Weather", use_container_width=True): st.session_state.current_page = "Weather"
     st.write("---")
     
-    # FIXED: Added a unique key "sidebar_logout"
     if st.button("🚪 Logout", use_container_width=True, key="sidebar_logout"):
         st.session_state.logged_in = False
+        st.query_params.clear() # Clear URL parameter
         st.rerun()
 
 # --- 6. PAGES ---
@@ -127,15 +135,18 @@ if st.session_state.current_page == "Dashboard":
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("<div class='main-box'><h3>🤖 AI Lab</h3><p>Chat with Groq Llama</p></div>", unsafe_allow_html=True)
-        if st.button("Open AI", use_container_width=True, key="dash_ai"): st.session_state.current_page = "AI Chat"; st.rerun()
+        if st.button("Open AI", use_container_width=True, key="dash_ai"): 
+            st.session_state.current_page = "AI Chat"; st.rerun()
     with c2:
         st.markdown("<div class='main-box'><h3>💬 Messaging</h3><p>Inbox & Chat</p></div>", unsafe_allow_html=True)
-        if st.button("Open Messages", use_container_width=True, key="dash_msg"): st.session_state.current_page = "Messages"; st.rerun()
+        if st.button("Open Messages", use_container_width=True, key="dash_msg"): 
+            st.session_state.current_page = "Messages"; st.rerun()
     with c3:
         st.markdown("<div class='main-box'><h3>🌤️ SkyView</h3><p>Live Weather</p></div>", unsafe_allow_html=True)
-        if st.button("Open Weather", use_container_width=True, key="dash_weather"): st.session_state.current_page = "Weather"; st.rerun()
+        if st.button("Open Weather", use_container_width=True, key="dash_weather"): 
+            st.session_state.current_page = "Weather"; st.rerun()
 
-# AI CHAT (FIXED LOGIC)
+# AI CHAT
 elif st.session_state.current_page == "AI Chat":
     st.title("🤖 AI Lab")
     client = Groq(api_key="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")
@@ -147,7 +158,6 @@ elif st.session_state.current_page == "AI Chat":
     
     with st.sidebar:
         st.write("---")
-        # FIXED: Added unique key "chat_new_session" to prevent DuplicateElementId error
         if st.button("➕ New Session", use_container_width=True, key="chat_new_session"):
             st.session_state.active_chat = "New Chat"
             my_h["New Chat"] = []
@@ -198,7 +208,7 @@ elif st.session_state.current_page == "AI Chat":
 elif st.session_state.current_page == "Messages":
     st.title("📫 Communication Center")
     t_chat, t_inbox = st.tabs(["💬 Direct Messages", "📥 Inbox & Requests"])
-    u_data = db_users[st.session_state.user]
+    u_data = db_users.get(st.session_state.user, {})
 
     with t_inbox:
         st.subheader("Add Friend")
@@ -230,7 +240,8 @@ elif st.session_state.current_page == "Messages":
             fl, cl = st.columns([1, 2])
             with fl:
                 for f in friends:
-                    if st.button(f"👤 {f}", use_container_width=True, key=f"friend_btn_{f}"): st.session_state.msg_target = f
+                    if st.button(f"👤 {f}", use_container_width=True, key=f"friend_btn_{f}"): 
+                        st.session_state.msg_target = f
             with cl:
                 dest = st.session_state.get("msg_target")
                 if dest:
