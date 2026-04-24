@@ -12,7 +12,7 @@ st.set_page_config(page_title="Lakshmeeyam AI", page_icon="🤖", layout="wide")
 
 # ⚠️ GOOGLE SEARCH CONSOLE VERIFICATION: 
 # Replace "YOUR_HTML_TAG_CONTENT_HERE" with the actual code Google gives you for the HTML Tag method.
-st.markdown('<meta name="google-site-verification" content="YOUR_HTML_TAG_CONTENT_HERE" />', unsafe_allow_html=True)
+st.markdown('<meta name="google-site-verification" content="google-site-verification=DmWLc_BbgGyevRBWmBNOqCWf2zc5RMxIJJoSm8xaGo0" />', unsafe_allow_html=True)
 
 st.markdown("""
     <style>
@@ -179,7 +179,7 @@ elif st.session_state.current_page == "AI Chat":
     st.title("🤖 grok AI")
     
     # ⚠️ SECURED: Using Streamlit Secrets instead of hardcoding the key
-    client = Groq(api_key=st.secrets["OxCHhsT6yQ4dgl6BMXMpWGdyb3FYRoy8zwlEMCvsclRgR51m2UKk"])
+    client = Groq(api_key=st.secrets["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"])
     
     if st.session_state.user not in db_chats:
         db_chats[st.session_state.user] = {"New Chat": []}
