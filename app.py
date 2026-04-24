@@ -94,8 +94,8 @@ if not st.session_state.logged_in:
             <hr style='border-color: #333;'>
             <ul>
                 <li><b>Custom AI:</b> Powered by Groq Llama 3.1</li>
-                <li><b>Token Persistence:</b> Securely stays logged in on refresh</li>
-                <li><b>Friend System:</b> Messaging in real-time</li>
+                <li><b>version 2bata:</b> the server is not ready user data may get deleted</li>
+                <li><b>WEATHER:</b> WEATHER app is not ready</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
