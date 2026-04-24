@@ -179,7 +179,7 @@ elif st.session_state.current_page == "AI Chat":
     st.title("🤖 grok AI")
     
     # ⚠️ SECURED: Using Streamlit Secrets instead of hardcoding the key
-    client = Groq(api_key=st.secrets["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"])
+    client = Groq(api_key=st.secrets["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"])
     
     if st.session_state.user not in db_chats:
         db_chats[st.session_state.user] = {"New Chat": []}
