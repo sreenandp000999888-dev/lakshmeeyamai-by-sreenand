@@ -10,10 +10,6 @@ import hashlib
 # --- 1. PAGE CONFIG & FUTURISTIC STYLING ---
 st.set_page_config(page_title="Lakshmeeyam AI", page_icon="🤖", layout="wide")
 
-# ⚠️ GOOGLE SEARCH CONSOLE VERIFICATION: 
-# Replace "YOUR_HTML_TAG_CONTENT_HERE" with the actual code Google gives you for the HTML Tag method.
-st.markdown('<meta name="google-site-verification=DmWLc_BbgGyevRBWmBNOqCWf2zc5RMxIJJoSm8xaGo0" />', unsafe_allow_html=True)
-
 st.markdown("""
     <style>
     .stApp {
@@ -73,6 +69,7 @@ if "logged_in" not in st.session_state:
                 st.session_state.user = username
                 break
 
+# FIXED: Ensure default page matches the logic below
 if "current_page" not in st.session_state: st.session_state.current_page = "home"
 if "active_chat" not in st.session_state: st.session_state.active_chat = "New Chat"
 if "processing" not in st.session_state: st.session_state.processing = False
@@ -130,7 +127,7 @@ if not st.session_state.logged_in:
 # --- 5. SIDEBAR NAVIGATION ---
 with st.sidebar:
     st.markdown(f"<h2 style='color:#00d4ff;'>Welcome, {st.session_state.user}</h2>", unsafe_allow_html=True)
-    
+    # FIXED: Changed "Dashboard" to "home" to match logic below
     if st.button("🏠 home", use_container_width=True): 
         st.session_state.current_page = "home"
         st.rerun()
@@ -177,10 +174,7 @@ if st.session_state.current_page == "home":
 # AI CHAT
 elif st.session_state.current_page == "AI Chat":
     st.title("🤖 grok AI")
-    
-    # ⚠️ SECURED: Using Streamlit Secrets instead of hardcoding the key
-    client = Groq(api_key=st.secrets["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"])
-    
+    client = Groq(api_key="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")
     if st.session_state.user not in db_chats:
         db_chats[st.session_state.user] = {"New Chat": []}
     my_h = db_chats[st.session_state.user]
