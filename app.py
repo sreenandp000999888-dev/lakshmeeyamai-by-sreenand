@@ -3,8 +3,23 @@ from groq import Groq
 import secrets
 import hashlib
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client, Client
+
+# ── Optional packages (install via requirements.txt) ──────────────────────────
+try:
+    from extra_streamlit_components import CookieManager
+    _COOKIES_OK = True
+except ImportError:
+    _COOKIES_OK = False
+
+try:
+    from streamlit_js_eval import get_geolocation
+    _GEO_OK = True
+except ImportError:
+    _GEO_OK = False
+# ──────────────────────────────────────────────────────────────────────────────
+
 
 # ─────────────────────────────────────────
 # 1. PAGE CONFIG & STYLING
@@ -170,6 +185,12 @@ footer { visibility: hidden; }
     animation: pulse 2s infinite;
 }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.gps-btn {
+    background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,212,100,0.15)) !important;
+    color: #00ff88 !important;
+    border: 1px solid rgba(0,255,136,0.4) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -188,7 +209,44 @@ except Exception as e:
 
 
 # ─────────────────────────────────────────
-# 3. DB HELPER FUNCTIONS
+# 3. COOKIE MANAGER (persistent login)
+# ─────────────────────────────────────────
+_cookie_manager = None
+if _COOKIES_OK:
+    try:
+        _cookie_manager = CookieManager(key="lakshmeeyam_cookies")
+    except Exception:
+        _cookie_manager = None
+
+def _get_cookie(name: str):
+    if _cookie_manager:
+        try:
+            return _cookie_manager.get(name)
+        except Exception:
+            return None
+    return None
+
+def _set_cookie(name: str, value: str, days: int = 30):
+    if _cookie_manager:
+        try:
+            _cookie_manager.set(
+                name, value,
+                expires_at=datetime.now() + timedelta(days=days),
+                key=f"set_{name}_{value[:8]}"
+            )
+        except Exception:
+            pass
+
+def _delete_cookie(name: str):
+    if _cookie_manager:
+        try:
+            _cookie_manager.delete(name, key=f"del_{name}")
+        except Exception:
+            pass
+
+
+# ─────────────────────────────────────────
+# 4. DB HELPER FUNCTIONS
 # ─────────────────────────────────────────
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
@@ -254,7 +312,7 @@ def send_message(chat_id: str, sender: str, text: str):
 
 
 # ─────────────────────────────────────────
-# 4. SESSION STATE DEFAULTS
+# 5. SESSION STATE DEFAULTS
 # ─────────────────────────────────────────
 defaults = {
     "logged_in": False,
@@ -263,7 +321,12 @@ defaults = {
     "active_chat": "New Chat",
     "processing": False,
     "msg_target": None,
-    "theme": "cyan"
+    "theme": "cyan",
+    "gps_lat": None,
+    "gps_lon": None,
+    "gps_city": None,
+    "gps_country": None,
+    "weather_fetched": False,
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -271,26 +334,42 @@ for k, v in defaults.items():
 
 
 # ─────────────────────────────────────────
-# 5. PERSISTENT LOGIN VIA TOKEN
+# 6. PERSISTENT LOGIN CHECK
+#    Priority: session → cookie → query param
 # ─────────────────────────────────────────
 if not st.session_state.logged_in:
-    url_token = st.query_params.get("token")
-    if url_token:
+    # 6a. Try cookie first (survives tab close)
+    cookie_token = _get_cookie("auth_token")
+    if cookie_token:
         try:
-            res = supabase.table("users").select("*").eq("token", url_token).execute()
+            res = supabase.table("users").select("*").eq("token", cookie_token).execute()
             if res.data:
                 st.session_state.logged_in = True
                 st.session_state.user = res.data[0]["username"]
         except:
             pass
 
+    # 6b. Fallback: URL query param (backward compat)
+    if not st.session_state.logged_in:
+        url_token = st.query_params.get("token")
+        if url_token:
+            try:
+                res = supabase.table("users").select("*").eq("token", url_token).execute()
+                if res.data:
+                    st.session_state.logged_in = True
+                    st.session_state.user = res.data[0]["username"]
+                    # Upgrade: also write to cookie so future visits work without URL param
+                    _set_cookie("auth_token", url_token)
+            except:
+                pass
+
 
 # ─────────────────────────────────────────
-# 6. LOGIN / SIGNUP PAGE
+# 7. LOGIN / SIGNUP PAGE
 # ─────────────────────────────────────────
 if not st.session_state.logged_in:
     st.markdown("<div class='hero-title'>🚀 LAKSHMEEYAM AI</div>", unsafe_allow_html=True)
-    st.markdown("<div class='hero-sub'>Next-Gen AI Platform by Sreenand-P</div>", unsafe_allow_html=True)
+    st.markdown("<div class='hero-sub'>Next-Gen AI Platform by Sreenand</div>", unsafe_allow_html=True)
 
     col_l, spacer, col_r = st.columns([1.4, 0.1, 1])
 
@@ -300,7 +379,7 @@ if not st.session_state.logged_in:
             <h2 style='color:#00d4ff; font-family:Orbitron,sans-serif;'>👨‍💻 About</h2>
             <p style='color:rgba(255,255,255,0.8);'>
                 <b>Lakshmeeyam AI</b> is a full-stack AI ecosystem built by 
-                <span style='color:#00d4ff;'><b>Sreenand-P</b></span> at age 14.
+                <span style='color:#00d4ff;'><b>Sreenand</b></span>, a 14-year-old developer from India.
             </p>
             <p style='color:rgba(255,255,255,0.6); font-size:0.9rem;'>
                 A hobby project combining AI, social networking, and real-time data.
@@ -320,7 +399,7 @@ if not st.session_state.logged_in:
                 <div style='background:rgba(0,255,136,0.08); padding:12px; border-radius:8px; border:1px solid rgba(0,255,136,0.2);'>
                     <div style='color:#00ff88; font-size:1.4rem;'>🌤️</div>
                     <div style='color:white; font-weight:600;'>Weather</div>
-                    <div style='color:rgba(255,255,255,0.5); font-size:0.8rem;'>Live forecasts</div>
+                    <div style='color:rgba(255,255,255,0.5); font-size:0.8rem;'>GPS + live forecasts</div>
                 </div>
                 <div style='background:rgba(255,165,0,0.08); padding:12px; border-radius:8px; border:1px solid rgba(255,165,0,0.2);'>
                     <div style='color:#ffa500; font-size:1.4rem;'>🔐</div>
@@ -340,7 +419,7 @@ if not st.session_state.logged_in:
         with t1:
             u_in = st.text_input("Username", key="login_user", placeholder="Enter username")
             p_in = st.text_input("Password", type="password", key="login_pass", placeholder="Enter password")
-            remember = st.checkbox("Stay logged in", value=True)
+            remember = st.checkbox("Stay logged in (persists after closing tab)", value=True)
 
             if st.button("LOGIN →", use_container_width=True, key="login_btn"):
                 if u_in and p_in:
@@ -354,6 +433,9 @@ if not st.session_state.logged_in:
                             st.session_state.logged_in = True
                             st.session_state.user = u_in
                             if remember:
+                                # ✅ Save to COOKIE (survives tab close)
+                                _set_cookie("auth_token", new_token, days=30)
+                                # Also set query param for backward compat
                                 st.query_params["token"] = new_token
                             st.success("✅ Welcome back!")
                             st.rerun()
@@ -394,7 +476,7 @@ if not st.session_state.logged_in:
 
 
 # ─────────────────────────────────────────
-# 7. SIDEBAR (logged in)
+# 8. SIDEBAR (logged in)
 # ─────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"<div class='sidebar-logo'>⚡ LAKSHMEEYAM AI</div>", unsafe_allow_html=True)
@@ -408,7 +490,6 @@ with st.sidebar:
     ]
 
     for icon, label, page_key in pages:
-        active = st.session_state.current_page == page_key
         if st.button(f"{icon}  {label}", use_container_width=True, key=f"nav_{page_key}"):
             st.session_state.current_page = page_key
             st.rerun()
@@ -443,6 +524,8 @@ with st.sidebar:
         if user_data:
             user_data["token"] = ""
             save_user(st.session_state.user, user_data)
+        # ✅ Clear cookie on logout
+        _delete_cookie("auth_token")
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.query_params.clear()
@@ -450,7 +533,7 @@ with st.sidebar:
 
 
 # ─────────────────────────────────────────
-# 8. HOME PAGE
+# 9. HOME PAGE
 # ─────────────────────────────────────────
 if st.session_state.current_page == "home":
     st.markdown("<div class='hero-title' style='font-size:2rem;'>🏠 Dashboard</div>", unsafe_allow_html=True)
@@ -463,7 +546,7 @@ if st.session_state.current_page == "home":
     cards = [
         (c1, "🤖", "AI Lab", "Llama 3.1 • Multi-session chat • Auto-titled history", "#00d4ff", "Open AI", "AI Chat"),
         (c2, "💬", "Messaging", "Friend requests • Real-time DMs • Inbox", "#7b2fff", "Open Messages", "Messages"),
-        (c3, "🌤️", "SkyView", "Live weather • Temperature • Wind speed", "#00ff88", "Open Weather", "Weather"),
+        (c3, "🌤️", "SkyView", "GPS live weather • Temperature • 5-Day Forecast", "#00ff88", "Open Weather", "Weather"),
     ]
 
     for col, icon, title, desc, color, btn, page in cards:
@@ -481,7 +564,7 @@ if st.session_state.current_page == "home":
 
 
 # ─────────────────────────────────────────
-# 9. AI CHAT PAGE
+# 10. AI CHAT PAGE
 # ─────────────────────────────────────────
 elif st.session_state.current_page == "AI Chat":
     try:
@@ -492,7 +575,6 @@ elif st.session_state.current_page == "AI Chat":
 
     st.markdown("<div class='hero-title' style='font-size:1.8rem;'>🤖 AI Chat</div>", unsafe_allow_html=True)
 
-    # Model selector
     col_m1, col_m2 = st.columns([3, 1])
     with col_m2:
         model_choice = st.selectbox("Model", [
@@ -507,7 +589,6 @@ elif st.session_state.current_page == "AI Chat":
     user_history = get_ai_chats(st.session_state.user)
     current_msgs = user_history.get(st.session_state.active_chat, [])
 
-    # Display messages
     chat_container = st.container()
     with chat_container:
         if not current_msgs:
@@ -523,7 +604,6 @@ elif st.session_state.current_page == "AI Chat":
                 with st.chat_message(m["role"]):
                     st.write(m["content"])
 
-    # Chat input
     prompt = st.chat_input("Ask me anything...")
     if prompt:
         current_msgs.append({"role": "user", "content": prompt})
@@ -534,11 +614,18 @@ elif st.session_state.current_page == "AI Chat":
     if st.session_state.processing and current_msgs:
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
+                # ✅ UPDATED SYSTEM PROMPT — Sreenand identity baked in
                 system_prompt = {
                     "role": "system",
                     "content": (
-                        "You are Lakshmeeyam AI, a helpful and intelligent assistant created by Sreenand-P, "
-                        "a 14-year-old developer from India. Be concise, friendly, and insightful. "
+                        "You are Lakshmeeyam AI, a helpful and intelligent assistant. "
+                        "You were created by Sreenand. "
+                        "If anyone asks who created you, who made you, or who your creator is, "
+                        "you must answer: 'I was created by Sreenand.' "
+                        "If anyone asks who Sreenand is, you must answer: "
+                        "'Sreenand is a 14-year-old boy and a brilliant young developer from India "
+                        "who built Lakshmeeyam AI as a passion project.' "
+                        "Be concise, friendly, and insightful. "
                         "Format responses with markdown when helpful."
                     )
                 }
@@ -555,7 +642,6 @@ elif st.session_state.current_page == "AI Chat":
 
                 current_msgs.append({"role": "assistant", "content": answer})
 
-                # Auto-title new chats
                 active_title = st.session_state.active_chat
                 if active_title == "New Chat" and len(current_msgs) >= 2:
                     try:
@@ -581,7 +667,7 @@ elif st.session_state.current_page == "AI Chat":
 
 
 # ─────────────────────────────────────────
-# 10. MESSAGES PAGE
+# 11. MESSAGES PAGE
 # ─────────────────────────────────────────
 elif st.session_state.current_page == "Messages":
     st.markdown("<div class='hero-title' style='font-size:1.8rem;'>💬 Messaging</div>", unsafe_allow_html=True)
@@ -643,7 +729,6 @@ elif st.session_state.current_page == "Messages":
                             save_user(st.session_state.user, u_data)
                             st.rerun()
 
-        # Friends list
         st.markdown("---")
         st.markdown("<h4 style='color:#00ff88;'>👥 Your Friends</h4>", unsafe_allow_html=True)
         friends_list = u_data.get("friends", [])
@@ -670,7 +755,6 @@ elif st.session_state.current_page == "Messages":
                 st.markdown("<p style='color:rgba(255,255,255,0.5); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;'>Friends</p>", unsafe_allow_html=True)
                 for f in friends:
                     active_dm = st.session_state.get("msg_target") == f
-                    style = "background:rgba(0,212,255,0.15); border-color:#00d4ff;" if active_dm else ""
                     if st.button(f"{'🟢' if active_dm else '👤'} {f}", use_container_width=True, key=f"dm_{f}"):
                         st.session_state.msg_target = f
                         st.rerun()
@@ -702,7 +786,7 @@ elif st.session_state.current_page == "Messages":
 
 
 # ─────────────────────────────────────────
-# 11. WEATHER PAGE
+# 12. WEATHER PAGE  ✅ GPS UPGRADED
 # ─────────────────────────────────────────
 elif st.session_state.current_page == "Weather":
     st.markdown("<div class='hero-title' style='font-size:1.8rem;'>🌤️ SkyView Weather</div>", unsafe_allow_html=True)
@@ -716,12 +800,189 @@ elif st.session_state.current_page == "Weather":
         80: ("Rain showers", "🌦️"), 81: ("Heavy showers", "⛈️"), 95: ("Thunderstorm", "⛈️"),
     }
 
-    col_search, _ = st.columns([2, 1])
-    with col_search:
-        loc = st.text_input("", placeholder="🔍 Enter city name...", label_visibility="collapsed")
-        search_btn = st.button("Get Weather →", use_container_width=False)
+    # ── GPS controls ──────────────────────────────────────────────────────────
+    col_search, col_gps, _ = st.columns([2, 1, 0.5])
 
-    if search_btn and loc:
+    with col_search:
+        loc = st.text_input(
+            "",
+            placeholder="🔍 Enter city name...",
+            label_visibility="collapsed",
+            value=st.session_state.gps_city or ""
+        )
+
+    with col_gps:
+        if _GEO_OK:
+            gps_btn = st.button("📍 Use My Location", use_container_width=True, key="gps_btn")
+        else:
+            gps_btn = False
+            st.markdown(
+                "<small style='color:rgba(255,100,100,0.7);'>Install streamlit-js-eval for GPS</small>",
+                unsafe_allow_html=True
+            )
+
+    search_btn = st.button("Get Weather →", key="search_weather_btn")
+
+    # ── GPS geolocation flow ──────────────────────────────────────────────────
+    if gps_btn and _GEO_OK:
+        with st.spinner("📍 Requesting your location from browser..."):
+            try:
+                geo_data = get_geolocation()
+                if geo_data and "coords" in geo_data:
+                    gps_lat = geo_data["coords"]["latitude"]
+                    gps_lon = geo_data["coords"]["longitude"]
+
+                    # Reverse-geocode with Nominatim (free, no key needed)
+                    rev_resp = requests.get(
+                        "https://nominatim.openstreetmap.org/reverse",
+                        params={"lat": gps_lat, "lon": gps_lon, "format": "json"},
+                        headers={"User-Agent": "LakshmeeyamAI/1.0"},
+                        timeout=10
+                    ).json()
+                    addr = rev_resp.get("address", {})
+                    city_name = (
+                        addr.get("city")
+                        or addr.get("town")
+                        or addr.get("village")
+                        or addr.get("county")
+                        or "Your Location"
+                    )
+                    country = addr.get("country", "")
+
+                    st.session_state.gps_lat = gps_lat
+                    st.session_state.gps_lon = gps_lon
+                    st.session_state.gps_city = city_name
+                    st.session_state.gps_country = country
+                    st.session_state.weather_fetched = True
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Could not get location. Please allow location access in your browser.")
+            except Exception as e:
+                st.error(f"❌ GPS error: {e}")
+
+    # ── Determine weather source: GPS or manual ───────────────────────────────
+    def _fetch_and_render_weather(lat, lon, city_name, country):
+        """Fetch and render the full weather UI for given coordinates."""
+        weather = requests.get(
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={lat}&longitude={lon}"
+            f"&current_weather=true"
+            f"&hourly=relativehumidity_2m,apparent_temperature,precipitation_probability,windspeed_10m"
+            f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
+            f"&forecast_days=5&timezone=auto",
+            timeout=10
+        ).json()
+
+        curr = weather["current_weather"]
+        temp  = curr["temperature"]
+        wind  = curr["windspeed"]
+        wcode = curr.get("weathercode", 0)
+        condition, w_icon = WMO_CODES.get(wcode, ("Unknown", "🌡️"))
+        is_day = curr.get("is_day", 1)
+
+        # Badge for GPS vs manual
+        source_badge = (
+            "<span style='background:rgba(0,255,136,0.15); border:1px solid #00ff88; "
+            "border-radius:20px; padding:2px 10px; font-size:0.75rem; color:#00ff88; margin-left:8px;'>"
+            "📍 GPS</span>"
+            if st.session_state.gps_lat else ""
+        )
+
+        st.markdown(f"""
+        <div class='weather-card'>
+            <h2 style='color:white; margin:0;'>{w_icon} {city_name}, {country}{source_badge}</h2>
+            <p style='color:rgba(255,255,255,0.5); margin:4px 0 20px;'>
+                {'☀️ Daytime' if is_day else '🌙 Nighttime'} · {condition}
+            </p>
+            <div style='font-size:4rem; color:#00d4ff; font-family:Orbitron,sans-serif;'>{temp}°C</div>
+            <div style='display:flex; justify-content:center; gap:30px; margin-top:20px; flex-wrap:wrap;'>
+                <div><span style='color:rgba(255,255,255,0.5);'>💨 Wind</span><br>
+                     <span style='color:white; font-size:1.2rem;'>{wind} km/h</span></div>
+                <div><span style='color:rgba(255,255,255,0.5);'>📍 Coords</span><br>
+                     <span style='color:white; font-size:1.2rem;'>{lat:.2f}, {lon:.2f}</span></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Hourly overview (next 8 hours)
+        hourly = weather.get("hourly", {})
+        if hourly:
+            st.markdown("<h4 style='color:#00d4ff;'>📊 Hourly Overview (Next 8 Hours)</h4>", unsafe_allow_html=True)
+            times    = hourly.get("time", [])[:8]
+            humids   = hourly.get("relativehumidity_2m", [])[:8]
+            precip   = hourly.get("precipitation_probability", [])[:8]
+            app_temps= hourly.get("apparent_temperature", [])[:8]
+
+            h_cols = st.columns(len(times))
+            for i, (t_str, hum, prec, app_t) in enumerate(zip(times, humids, precip, app_temps)):
+                hour = t_str[11:16] if len(t_str) > 10 else t_str
+                with h_cols[i]:
+                    st.markdown(f"""
+                    <div style='background:rgba(0,100,200,0.15); border:1px solid rgba(0,150,255,0.3);
+                    border-radius:10px; padding:10px; text-align:center; color:white;'>
+                        <div style='color:rgba(255,255,255,0.5); font-size:0.75rem;'>{hour}</div>
+                        <div style='color:#00d4ff; font-size:0.9rem; margin:4px 0;'>{app_t}°</div>
+                        <div style='font-size:0.75rem; color:rgba(255,255,255,0.5);'>💧{hum}%</div>
+                        <div style='font-size:0.75rem; color:rgba(100,200,255,0.7);'>🌧{prec}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        # 5-day forecast
+        daily = weather.get("daily", {})
+        if daily:
+            st.markdown("<br><h4 style='color:#00d4ff;'>📅 5-Day Forecast</h4>", unsafe_allow_html=True)
+            d_dates = daily.get("time", [])
+            d_max   = daily.get("temperature_2m_max", [])
+            d_min   = daily.get("temperature_2m_min", [])
+            d_prec  = daily.get("precipitation_sum", [])
+            d_codes = daily.get("weathercode", [])
+
+            d_cols = st.columns(len(d_dates))
+            for i in range(len(d_dates)):
+                dc, dicon = WMO_CODES.get(d_codes[i] if i < len(d_codes) else 0, ("?", "🌡️"))
+                date_obj = datetime.strptime(d_dates[i], "%Y-%m-%d")
+                day_name = date_obj.strftime("%a")
+                with d_cols[i]:
+                    st.markdown(f"""
+                    <div style='background:rgba(0,100,150,0.2); border:1px solid rgba(0,150,255,0.3);
+                    border-radius:10px; padding:14px 8px; text-align:center; color:white;'>
+                        <div style='color:rgba(255,255,255,0.6); font-size:0.8rem;'>{day_name}</div>
+                        <div style='font-size:1.8rem; margin:6px 0;'>{dicon}</div>
+                        <div style='color:#ff6b6b; font-weight:600;'>{d_max[i] if i < len(d_max) else '-'}°</div>
+                        <div style='color:#74b9ff; font-size:0.85rem;'>{d_min[i] if i < len(d_min) else '-'}°</div>
+                        <div style='color:rgba(150,200,255,0.7); font-size:0.75rem; margin-top:4px;'>
+                            💧{d_prec[i] if i < len(d_prec) else 0}mm
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    # ── Render weather ────────────────────────────────────────────────────────
+    # Case 1: GPS coords already stored from previous GPS fetch
+    if st.session_state.weather_fetched and st.session_state.gps_lat:
+        try:
+            _fetch_and_render_weather(
+                st.session_state.gps_lat,
+                st.session_state.gps_lon,
+                st.session_state.gps_city,
+                st.session_state.gps_country
+            )
+            # Allow switching to manual search
+            if st.button("🔍 Search a different city instead", key="switch_to_manual"):
+                st.session_state.gps_lat = None
+                st.session_state.gps_lon = None
+                st.session_state.gps_city = None
+                st.session_state.gps_country = None
+                st.session_state.weather_fetched = False
+                st.rerun()
+        except requests.exceptions.ConnectionError:
+            st.error("❌ Connection error.")
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
+
+    # Case 2: Manual city search
+    elif search_btn and loc:
         with st.spinner("Fetching weather data..."):
             try:
                 geo = requests.get(
@@ -734,90 +995,9 @@ elif st.session_state.current_page == "Weather":
                 else:
                     r = geo["results"][0]
                     city_name = r.get("name", loc)
-                    country = r.get("country", "")
-                    lat, lon = r["latitude"], r["longitude"]
-
-                    weather = requests.get(
-                        f"https://api.open-meteo.com/v1/forecast"
-                        f"?latitude={lat}&longitude={lon}"
-                        f"&current_weather=true"
-                        f"&hourly=relativehumidity_2m,apparent_temperature,precipitation_probability,windspeed_10m"
-                        f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
-                        f"&forecast_days=5&timezone=auto",
-                        timeout=10
-                    ).json()
-
-                    curr = weather["current_weather"]
-                    temp = curr["temperature"]
-                    wind = curr["windspeed"]
-                    wcode = curr.get("weathercode", 0)
-                    condition, w_icon = WMO_CODES.get(wcode, ("Unknown", "🌡️"))
-                    is_day = curr.get("is_day", 1)
-
-                    # Current weather card
-                    st.markdown(f"""
-                    <div class='weather-card'>
-                        <h2 style='color:white; margin:0;'>{w_icon} {city_name}, {country}</h2>
-                        <p style='color:rgba(255,255,255,0.5); margin:4px 0 20px;'>{'☀️ Daytime' if is_day else '🌙 Nighttime'} · {condition}</p>
-                        <div style='font-size:4rem; color:#00d4ff; font-family:Orbitron,sans-serif;'>{temp}°C</div>
-                        <div style='display:flex; justify-content:center; gap:30px; margin-top:20px; flex-wrap:wrap;'>
-                            <div><span style='color:rgba(255,255,255,0.5);'>💨 Wind</span><br><span style='color:white; font-size:1.2rem;'>{wind} km/h</span></div>
-                            <div><span style='color:rgba(255,255,255,0.5);'>📍 Coords</span><br><span style='color:white; font-size:1.2rem;'>{lat:.2f}, {lon:.2f}</span></div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    st.markdown("<br>", unsafe_allow_html=True)
-
-                    # Hourly humidity (first 8 hours)
-                    hourly = weather.get("hourly", {})
-                    if hourly:
-                        st.markdown("<h4 style='color:#00d4ff;'>📊 Hourly Overview (Next 8 Hours)</h4>", unsafe_allow_html=True)
-                        times = hourly.get("time", [])[:8]
-                        humids = hourly.get("relativehumidity_2m", [])[:8]
-                        precip = hourly.get("precipitation_probability", [])[:8]
-                        app_temps = hourly.get("apparent_temperature", [])[:8]
-
-                        h_cols = st.columns(len(times))
-                        for i, (t_str, hum, prec, app_t) in enumerate(zip(times, humids, precip, app_temps)):
-                            hour = t_str[11:16] if len(t_str) > 10 else t_str
-                            with h_cols[i]:
-                                st.markdown(f"""
-                                <div style='background:rgba(0,100,200,0.15); border:1px solid rgba(0,150,255,0.3);
-                                border-radius:10px; padding:10px; text-align:center; color:white;'>
-                                    <div style='color:rgba(255,255,255,0.5); font-size:0.75rem;'>{hour}</div>
-                                    <div style='color:#00d4ff; font-size:0.9rem; margin:4px 0;'>{app_t}°</div>
-                                    <div style='font-size:0.75rem; color:rgba(255,255,255,0.5);'>💧{hum}%</div>
-                                    <div style='font-size:0.75rem; color:rgba(100,200,255,0.7);'>🌧{prec}%</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                    # 5-day forecast
-                    daily = weather.get("daily", {})
-                    if daily:
-                        st.markdown("<br><h4 style='color:#00d4ff;'>📅 5-Day Forecast</h4>", unsafe_allow_html=True)
-                        d_dates = daily.get("time", [])
-                        d_max = daily.get("temperature_2m_max", [])
-                        d_min = daily.get("temperature_2m_min", [])
-                        d_prec = daily.get("precipitation_sum", [])
-                        d_codes = daily.get("weathercode", [])
-
-                        d_cols = st.columns(len(d_dates))
-                        for i in range(len(d_dates)):
-                            dc, dicon = WMO_CODES.get(d_codes[i] if i < len(d_codes) else 0, ("?", "🌡️"))
-                            date_obj = datetime.strptime(d_dates[i], "%Y-%m-%d")
-                            day_name = date_obj.strftime("%a")
-                            with d_cols[i]:
-                                st.markdown(f"""
-                                <div style='background:rgba(0,100,150,0.2); border:1px solid rgba(0,150,255,0.3);
-                                border-radius:10px; padding:14px 8px; text-align:center; color:white;'>
-                                    <div style='color:rgba(255,255,255,0.6); font-size:0.8rem;'>{day_name}</div>
-                                    <div style='font-size:1.8rem; margin:6px 0;'>{dicon}</div>
-                                    <div style='color:#ff6b6b; font-weight:600;'>{d_max[i] if i < len(d_max) else '-'}°</div>
-                                    <div style='color:#74b9ff; font-size:0.85rem;'>{d_min[i] if i < len(d_min) else '-'}°</div>
-                                    <div style='color:rgba(150,200,255,0.7); font-size:0.75rem; margin-top:4px;'>💧{d_prec[i] if i < len(d_prec) else 0}mm</div>
-                                </div>
-                                """, unsafe_allow_html=True)
+                    country   = r.get("country", "")
+                    lat, lon  = r["latitude"], r["longitude"]
+                    _fetch_and_render_weather(lat, lon, city_name, country)
 
             except requests.exceptions.ConnectionError:
                 st.error("❌ Connection error. Check your internet connection.")
@@ -825,13 +1005,16 @@ elif st.session_state.current_page == "Weather":
                 st.error("❌ Request timed out. Try again.")
             except Exception as e:
                 st.error(f"❌ Error: {e}")
+
     elif not loc and search_btn:
         st.warning("Please enter a city name")
-    else:
+
+    # Case 3: Empty state
+    elif not st.session_state.weather_fetched:
         st.markdown("""
-        <div style='text-align:center; padding:80px 20px; color:rgba(255,255,255,0.3);'>
+        <div style='text-align:center; padding:60px 20px; color:rgba(255,255,255,0.3);'>
             <div style='font-size:4rem;'>🌍</div>
-            <p style='font-size:1.2rem;'>Enter a city to get live weather</p>
+            <p style='font-size:1.2rem;'>Enter a city — or tap <b style='color:#00ff88;'>📍 Use My Location</b></p>
             <p style='font-size:0.85rem;'>Temperature · Humidity · Wind · 5-Day Forecast</p>
         </div>
         """, unsafe_allow_html=True)
