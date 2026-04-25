@@ -33,7 +33,7 @@ st.markdown("""
 (function() {
     var meta = document.createElement('meta');
     meta.name = 'google-site-verification';
-    meta.content = 'PASTE_YOUR_CODE_HERE';
+    meta.content = '<meta name="google-site-verification" content="8OaOaw7JQ9Z4Zh1hdkiSvmbFdgMyOwrtPhc3sNHI2ZU" />';
     document.head.appendChild(meta);
 })();
 </script>
