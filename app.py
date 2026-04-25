@@ -26,18 +26,19 @@ except ImportError:
 # ─────────────────────────────────────────
 st.set_page_config(page_title="Lakshmeeyam AI", page_icon="🚀", layout="wide")
 
-# ── Google Analytics 4 (also verifies Search Console ownership) ───────────────
-import streamlit.components.v1 as components
-components.html("""
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-98JQK90KWX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-98JQK90KWX');
-</script>
-""", height=0)
+# ── Google Analytics 4 via streamlit-analytics2 ───────────────────────────────
+# Injects GA4 into the real page <head> (not an iframe) so Google detects it.
+# Add to requirements.txt: streamlit-analytics2
+try:
+    import streamlit_analytics2 as streamlit_analytics
+    streamlit_analytics.start_tracking(
+        ga4_id="G-98JQK90KWX",
+        verbose=False,
+        unsafe_password=""
+    )
+    _ANALYTICS_OK = True
+except Exception:
+    _ANALYTICS_OK = False
 # ──────────────────────────────────────────────────────────────────────────────
 
 st.markdown("""
@@ -1032,3 +1033,13 @@ elif st.session_state.current_page == "Weather":
             <p style='font-size:0.85rem;'>Temperature · Humidity · Wind · 5-Day Forecast</p>
         </div>
         """, unsafe_allow_html=True)
+
+# ── End analytics tracking ────────────────────────────────────────────────────
+if _ANALYTICS_OK:
+    try:
+        streamlit_analytics.stop_tracking(
+            ga4_id="G-98JQK90KWX",
+            unsafe_password=""
+        )
+    except Exception:
+        pass
