@@ -24,7 +24,7 @@ except ImportError:
 # ─────────────────────────────────────────
 # 1. PAGE CONFIG & STYLING
 # ─────────────────────────────────────────
-st.set_page_config(page_title="Lakshmeeyam AI", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Lakshmeeyam AI", page_icon="https://cdn.venngage.com/features/img/AI_Icon_Generator_Sample_Chat.png", layout="wide")
 
 # ── Google Analytics 4 via streamlit-analytics2 ───────────────────────────────
 # Injects GA4 into the real page <head> (not an iframe) so Google detects it.
