@@ -4,3 +4,4 @@ supabase
 requests
 extra-streamlit-components
 streamlit-js-eval
+streamlit-analytics2
