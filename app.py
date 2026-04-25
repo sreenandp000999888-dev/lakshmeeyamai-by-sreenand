@@ -26,6 +26,13 @@ except ImportError:
 # ─────────────────────────────────────────
 st.set_page_config(page_title="Lakshmeeyam AI", page_icon="🚀", layout="wide")
 
+# ── Google Search Console Verification ────────────────────────────────────────
+st.markdown(
+    '<meta name="google-site-verification" content="<meta name="google-site-verification" content="8OaOaw7JQ9Z4Zh1hdkiSvmbFdgMyOwrtPhc3sNHI2ZU" />" />',
+    unsafe_allow_html=True
+)
+# ──────────────────────────────────────────────────────────────────────────────
+
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&display=swap');
