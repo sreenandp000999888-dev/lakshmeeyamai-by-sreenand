@@ -24,7 +24,7 @@ except ImportError:
 # ─────────────────────────────────────────
 # 1. PAGE CONFIG & STYLING
 # ─────────────────────────────────────────
-st.set_page_config(page_title="Lakshmeeyam AI", page_icon="https://cdn.venngage.com/features/img/AI_Icon_Generator_Sample_Chat.png", layout="wide")
+st.set_page_config(page_title="Lakshmeeyam AI", page_icon="🚀", layout="wide")
 
 # ── Google Analytics 4 via streamlit-analytics2 ───────────────────────────────
 # Injects GA4 into the real page <head> (not an iframe) so Google detects it.
@@ -801,9 +801,12 @@ elif st.session_state.current_page == "Messages":
 
 
 # ─────────────────────────────────────────
-# 12. WEATHER PAGE  ✅ GPS UPGRADED
+# 12. WEATHER PAGE — GPS only + Charts
 # ─────────────────────────────────────────
 elif st.session_state.current_page == "Weather":
+    import json
+    import pandas as pd
+
     st.markdown("<div class='hero-title' style='font-size:1.8rem;'>🌤️ SkyView Weather</div>", unsafe_allow_html=True)
 
     WMO_CODES = {
@@ -815,139 +818,185 @@ elif st.session_state.current_page == "Weather":
         80: ("Rain showers", "🌦️"), 81: ("Heavy showers", "⛈️"), 95: ("Thunderstorm", "⛈️"),
     }
 
-    # ── GPS controls ──────────────────────────────────────────────────────────
-    col_search, col_gps, _ = st.columns([2, 1, 0.5])
-
-    with col_search:
-        loc = st.text_input(
-            "",
-            placeholder="🔍 Enter city name...",
-            label_visibility="collapsed",
-            value=st.session_state.gps_city or ""
-        )
-
-    with col_gps:
+    # ── GPS Button ────────────────────────────────────────────────────────────
+    col_btn, col_refresh, _ = st.columns([2, 1, 2])
+    with col_btn:
         if _GEO_OK:
-            gps_btn = st.button("📍 Use My Location", use_container_width=True, key="gps_btn")
+            gps_btn = st.button("📍 Detect My Location", use_container_width=True, key="gps_btn")
         else:
             gps_btn = False
-            st.markdown(
-                "<small style='color:rgba(255,100,100,0.7);'>Install streamlit-js-eval for GPS</small>",
-                unsafe_allow_html=True
-            )
+            st.error("⚠️ Install streamlit-js-eval for GPS support")
+    with col_refresh:
+        if st.session_state.weather_fetched:
+            if st.button("🔄 Refresh", use_container_width=True, key="refresh_btn"):
+                st.session_state.weather_fetched = False
+                st.session_state.gps_lat = None
+                st.session_state.gps_lon = None
+                st.rerun()
 
-    search_btn = st.button("Get Weather →", key="search_weather_btn")
-
-    # ── GPS geolocation flow ──────────────────────────────────────────────────
+    # ── GPS fetch ─────────────────────────────────────────────────────────────
     if gps_btn and _GEO_OK:
-        with st.spinner("📍 Requesting your location from browser..."):
+        with st.spinner("📍 Getting your location... (allow access if prompted)"):
             try:
                 geo_data = get_geolocation()
                 if geo_data and "coords" in geo_data:
                     gps_lat = geo_data["coords"]["latitude"]
                     gps_lon = geo_data["coords"]["longitude"]
-
-                    # Reverse-geocode with Nominatim (free, no key needed)
-                    rev_resp = requests.get(
+                    # Reverse geocode — free, no API key
+                    rev = requests.get(
                         "https://nominatim.openstreetmap.org/reverse",
                         params={"lat": gps_lat, "lon": gps_lon, "format": "json"},
                         headers={"User-Agent": "LakshmeeyamAI/1.0"},
                         timeout=10
                     ).json()
-                    addr = rev_resp.get("address", {})
+                    addr = rev.get("address", {})
                     city_name = (
-                        addr.get("city")
-                        or addr.get("town")
-                        or addr.get("village")
-                        or addr.get("county")
+                        addr.get("city") or addr.get("town")
+                        or addr.get("village") or addr.get("county")
                         or "Your Location"
                     )
                     country = addr.get("country", "")
-
-                    st.session_state.gps_lat = gps_lat
-                    st.session_state.gps_lon = gps_lon
-                    st.session_state.gps_city = city_name
+                    st.session_state.gps_lat     = gps_lat
+                    st.session_state.gps_lon     = gps_lon
+                    st.session_state.gps_city    = city_name
                     st.session_state.gps_country = country
                     st.session_state.weather_fetched = True
                     st.rerun()
                 else:
-                    st.warning("⚠️ Could not get location. Please allow location access in your browser.")
+                    st.warning("⚠️ Location not received. Please allow location access in your browser and try again.")
             except Exception as e:
                 st.error(f"❌ GPS error: {e}")
 
-    # ── Determine weather source: GPS or manual ───────────────────────────────
-    def _fetch_and_render_weather(lat, lon, city_name, country):
-        """Fetch and render the full weather UI for given coordinates."""
-        weather = requests.get(
-            f"https://api.open-meteo.com/v1/forecast"
-            f"?latitude={lat}&longitude={lon}"
-            f"&current_weather=true"
-            f"&hourly=relativehumidity_2m,apparent_temperature,precipitation_probability,windspeed_10m"
-            f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
-            f"&forecast_days=5&timezone=auto",
-            timeout=10
-        ).json()
+    # ── Render weather if GPS data available ──────────────────────────────────
+    if st.session_state.weather_fetched and st.session_state.gps_lat:
+        lat       = st.session_state.gps_lat
+        lon       = st.session_state.gps_lon
+        city_name = st.session_state.gps_city
+        country   = st.session_state.gps_country
 
-        curr = weather["current_weather"]
-        temp  = curr["temperature"]
-        wind  = curr["windspeed"]
-        wcode = curr.get("weathercode", 0)
-        condition, w_icon = WMO_CODES.get(wcode, ("Unknown", "🌡️"))
-        is_day = curr.get("is_day", 1)
+        try:
+            with st.spinner("⛅ Loading weather data..."):
+                weather = requests.get(
+                    "https://api.open-meteo.com/v1/forecast",
+                    params={
+                        "latitude": lat,
+                        "longitude": lon,
+                        "current_weather": "true",
+                        "hourly": "temperature_2m,apparent_temperature,relativehumidity_2m,precipitation_probability,windspeed_10m,weathercode",
+                        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode",
+                        "forecast_days": 7,
+                        "timezone": "auto"
+                    },
+                    timeout=10
+                ).json()
 
-        # Badge for GPS vs manual
-        source_badge = (
-            "<span style='background:rgba(0,255,136,0.15); border:1px solid #00ff88; "
-            "border-radius:20px; padding:2px 10px; font-size:0.75rem; color:#00ff88; margin-left:8px;'>"
-            "📍 GPS</span>"
-            if st.session_state.gps_lat else ""
-        )
+            curr      = weather["current_weather"]
+            temp      = curr["temperature"]
+            wind      = curr["windspeed"]
+            wcode     = int(curr.get("weathercode", 0))
+            is_day    = curr.get("is_day", 1)
+            condition, w_icon = WMO_CODES.get(wcode, ("Unknown", "🌡️"))
 
-        st.markdown(f"""
-        <div class='weather-card'>
-            <h2 style='color:white; margin:0;'>{w_icon} {city_name}, {country}{source_badge}</h2>
-            <p style='color:rgba(255,255,255,0.5); margin:4px 0 20px;'>
+            # ── Current weather card ──────────────────────────────────────────
+            st.markdown(f"""
+            <div class='weather-card'>
+                <div style='display:inline-block; background:rgba(0,255,136,0.15);
+                border:1px solid #00ff88; border-radius:20px; padding:2px 12px;
+                font-size:0.8rem; color:#00ff88; margin-bottom:10px;'>
+                📍 GPS · {city_name}, {country}
+                </div>
+                <div style='font-size:5rem; line-height:1;'>{w_icon}</div>
+                <div style='font-size:4rem; color:#00d4ff;
+                font-family:Orbitron,sans-serif; margin:10px 0;'>{temp}°C</div>
+                <div style='color:rgba(255,255,255,0.7); font-size:1.1rem;'>
                 {'☀️ Daytime' if is_day else '🌙 Nighttime'} · {condition}
-            </p>
-            <div style='font-size:4rem; color:#00d4ff; font-family:Orbitron,sans-serif;'>{temp}°C</div>
-            <div style='display:flex; justify-content:center; gap:30px; margin-top:20px; flex-wrap:wrap;'>
-                <div><span style='color:rgba(255,255,255,0.5);'>💨 Wind</span><br>
-                     <span style='color:white; font-size:1.2rem;'>{wind} km/h</span></div>
-                <div><span style='color:rgba(255,255,255,0.5);'>📍 Coords</span><br>
-                     <span style='color:white; font-size:1.2rem;'>{lat:.2f}, {lon:.2f}</span></div>
+                </div>
+                <div style='display:flex; justify-content:center; gap:40px;
+                margin-top:20px; flex-wrap:wrap;'>
+                    <div><div style='color:rgba(255,255,255,0.5); font-size:0.85rem;'>💨 Wind</div>
+                         <div style='color:white; font-size:1.3rem;font-weight:600;'>{wind} km/h</div></div>
+                    <div><div style='color:rgba(255,255,255,0.5); font-size:0.85rem;'>🌡️ Feels Like</div>
+                         <div style='color:white; font-size:1.3rem;font-weight:600;'>
+                         {weather["hourly"]["apparent_temperature"][0]}°C</div></div>
+                    <div><div style='color:rgba(255,255,255,0.5); font-size:0.85rem;'>💧 Humidity</div>
+                         <div style='color:white; font-size:1.3rem;font-weight:600;'>
+                         {weather["hourly"]["relativehumidity_2m"][0]}%</div></div>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
 
-        # Hourly overview (next 8 hours)
-        hourly = weather.get("hourly", {})
-        if hourly:
-            st.markdown("<h4 style='color:#00d4ff;'>📊 Hourly Overview (Next 8 Hours)</h4>", unsafe_allow_html=True)
-            times    = hourly.get("time", [])[:8]
-            humids   = hourly.get("relativehumidity_2m", [])[:8]
-            precip   = hourly.get("precipitation_probability", [])[:8]
-            app_temps= hourly.get("apparent_temperature", [])[:8]
+            # ── Hourly charts (next 24 hours) ─────────────────────────────────
+            hourly   = weather["hourly"]
+            # Find index of current hour
+            curr_time_str = curr.get("time", "")
+            all_times = hourly["time"]
+            try:
+                start_idx = next(
+                    (i for i, t in enumerate(all_times) if t >= curr_time_str), 0
+                )
+            except Exception:
+                start_idx = 0
+            end_idx = min(start_idx + 24, len(all_times))
 
-            h_cols = st.columns(len(times))
-            for i, (t_str, hum, prec, app_t) in enumerate(zip(times, humids, precip, app_temps)):
-                hour = t_str[11:16] if len(t_str) > 10 else t_str
-                with h_cols[i]:
-                    st.markdown(f"""
-                    <div style='background:rgba(0,100,200,0.15); border:1px solid rgba(0,150,255,0.3);
-                    border-radius:10px; padding:10px; text-align:center; color:white;'>
-                        <div style='color:rgba(255,255,255,0.5); font-size:0.75rem;'>{hour}</div>
-                        <div style='color:#00d4ff; font-size:0.9rem; margin:4px 0;'>{app_t}°</div>
-                        <div style='font-size:0.75rem; color:rgba(255,255,255,0.5);'>💧{hum}%</div>
-                        <div style='font-size:0.75rem; color:rgba(100,200,255,0.7);'>🌧{prec}%</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            hours_labels = [t[11:16] for t in all_times[start_idx:end_idx]]
+            temps_24     = hourly["temperature_2m"][start_idx:end_idx]
+            humidity_24  = hourly["relativehumidity_2m"][start_idx:end_idx]
+            precip_24    = hourly["precipitation_probability"][start_idx:end_idx]
+            wind_24      = hourly["windspeed_10m"][start_idx:end_idx]
 
-        # 5-day forecast
-        daily = weather.get("daily", {})
-        if daily:
-            st.markdown("<br><h4 style='color:#00d4ff;'>📅 5-Day Forecast</h4>", unsafe_allow_html=True)
+            df_hourly = pd.DataFrame({
+                "Hour":        hours_labels,
+                "Temp (°C)":   temps_24,
+                "Humidity (%)":humidity_24,
+                "Rain chance (%)": precip_24,
+                "Wind (km/h)": wind_24,
+            })
+
+            st.markdown("<h4 style='color:#00d4ff;'>📈 Next 24 Hours</h4>", unsafe_allow_html=True)
+
+            tab_temp, tab_rain, tab_wind, tab_humid = st.tabs([
+                "🌡️ Temperature", "🌧️ Rain Chance", "💨 Wind Speed", "💧 Humidity"
+            ])
+
+            chart_config = {"displayModeBar": False}
+
+            with tab_temp:
+                st.line_chart(
+                    df_hourly.set_index("Hour")["Temp (°C)"],
+                    color="#00d4ff",
+                    use_container_width=True,
+                    height=220
+                )
+
+            with tab_rain:
+                st.bar_chart(
+                    df_hourly.set_index("Hour")["Rain chance (%)"],
+                    color="#7b2fff",
+                    use_container_width=True,
+                    height=220
+                )
+
+            with tab_wind:
+                st.line_chart(
+                    df_hourly.set_index("Hour")["Wind (km/h)"],
+                    color="#00ff88",
+                    use_container_width=True,
+                    height=220
+                )
+
+            with tab_humid:
+                st.area_chart(
+                    df_hourly.set_index("Hour")["Humidity (%)"],
+                    color="#ffa500",
+                    use_container_width=True,
+                    height=220
+                )
+
+            # ── 7-day forecast cards ──────────────────────────────────────────
+            st.markdown("<br><h4 style='color:#00d4ff;'>📅 7-Day Forecast</h4>", unsafe_allow_html=True)
+            daily   = weather["daily"]
             d_dates = daily.get("time", [])
             d_max   = daily.get("temperature_2m_max", [])
             d_min   = daily.get("temperature_2m_min", [])
@@ -956,81 +1005,42 @@ elif st.session_state.current_page == "Weather":
 
             d_cols = st.columns(len(d_dates))
             for i in range(len(d_dates)):
-                dc, dicon = WMO_CODES.get(d_codes[i] if i < len(d_codes) else 0, ("?", "🌡️"))
-                date_obj = datetime.strptime(d_dates[i], "%Y-%m-%d")
-                day_name = date_obj.strftime("%a")
+                dc, dicon = WMO_CODES.get(int(d_codes[i]) if i < len(d_codes) else 0, ("?", "🌡️"))
+                day_name  = datetime.strptime(d_dates[i], "%Y-%m-%d").strftime("%a %d")
+                prec_val  = round(d_prec[i], 1) if i < len(d_prec) and d_prec[i] else 0
                 with d_cols[i]:
                     st.markdown(f"""
-                    <div style='background:rgba(0,100,150,0.2); border:1px solid rgba(0,150,255,0.3);
-                    border-radius:10px; padding:14px 8px; text-align:center; color:white;'>
-                        <div style='color:rgba(255,255,255,0.6); font-size:0.8rem;'>{day_name}</div>
-                        <div style='font-size:1.8rem; margin:6px 0;'>{dicon}</div>
-                        <div style='color:#ff6b6b; font-weight:600;'>{d_max[i] if i < len(d_max) else '-'}°</div>
-                        <div style='color:#74b9ff; font-size:0.85rem;'>{d_min[i] if i < len(d_min) else '-'}°</div>
-                        <div style='color:rgba(150,200,255,0.7); font-size:0.75rem; margin-top:4px;'>
-                            💧{d_prec[i] if i < len(d_prec) else 0}mm
-                        </div>
+                    <div style='background:rgba(0,100,150,0.2);
+                    border:1px solid rgba(0,150,255,0.3); border-radius:12px;
+                    padding:14px 6px; text-align:center; color:white;'>
+                        <div style='color:rgba(255,255,255,0.6); font-size:0.75rem;'>{day_name}</div>
+                        <div style='font-size:2rem; margin:6px 0;'>{dicon}</div>
+                        <div style='color:#ff6b6b; font-weight:700;'>
+                            {d_max[i] if i < len(d_max) else '-'}°</div>
+                        <div style='color:#74b9ff; font-size:0.85rem;'>
+                            {d_min[i] if i < len(d_min) else '-'}°</div>
+                        <div style='color:rgba(150,200,255,0.7); font-size:0.72rem; margin-top:4px;'>
+                            💧{prec_val}mm</div>
                     </div>
                     """, unsafe_allow_html=True)
 
-    # ── Render weather ────────────────────────────────────────────────────────
-    # Case 1: GPS coords already stored from previous GPS fetch
-    if st.session_state.weather_fetched and st.session_state.gps_lat:
-        try:
-            _fetch_and_render_weather(
-                st.session_state.gps_lat,
-                st.session_state.gps_lon,
-                st.session_state.gps_city,
-                st.session_state.gps_country
-            )
-            # Allow switching to manual search
-            if st.button("🔍 Search a different city instead", key="switch_to_manual"):
-                st.session_state.gps_lat = None
-                st.session_state.gps_lon = None
-                st.session_state.gps_city = None
-                st.session_state.gps_country = None
-                st.session_state.weather_fetched = False
-                st.rerun()
         except requests.exceptions.ConnectionError:
-            st.error("❌ Connection error.")
+            st.error("❌ No internet connection.")
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"❌ Error loading weather: {e}")
 
-    # Case 2: Manual city search
-    elif search_btn and loc:
-        with st.spinner("Fetching weather data..."):
-            try:
-                geo = requests.get(
-                    f"https://geocoding-api.open-meteo.com/v1/search?name={loc}&count=1&language=en&format=json",
-                    timeout=10
-                ).json()
-
-                if "results" not in geo or not geo["results"]:
-                    st.error(f"❌ City '{loc}' not found. Try a different spelling.")
-                else:
-                    r = geo["results"][0]
-                    city_name = r.get("name", loc)
-                    country   = r.get("country", "")
-                    lat, lon  = r["latitude"], r["longitude"]
-                    _fetch_and_render_weather(lat, lon, city_name, country)
-
-            except requests.exceptions.ConnectionError:
-                st.error("❌ Connection error. Check your internet connection.")
-            except requests.exceptions.Timeout:
-                st.error("❌ Request timed out. Try again.")
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
-
-    elif not loc and search_btn:
-        st.warning("Please enter a city name")
-
-    # Case 3: Empty state
-    elif not st.session_state.weather_fetched:
+    # ── Empty state ───────────────────────────────────────────────────────────
+    else:
         st.markdown("""
-        <div style='text-align:center; padding:60px 20px; color:rgba(255,255,255,0.3);'>
-            <div style='font-size:4rem;'>🌍</div>
-            <p style='font-size:1.2rem;'>Enter a city — or tap <b style='color:#00ff88;'>📍 Use My Location</b></p>
-            <p style='font-size:0.85rem;'>Temperature · Humidity · Wind · 5-Day Forecast</p>
+        <div style='text-align:center; padding:80px 20px; color:rgba(255,255,255,0.3);'>
+            <div style='font-size:5rem;'>🌍</div>
+            <p style='font-size:1.3rem; color:rgba(255,255,255,0.5);'>
+                Tap <b style='color:#00ff88;'>📍 Detect My Location</b> above
+            </p>
+            <p style='font-size:0.85rem;'>
+                Uses your device GPS · No typing needed<br>
+                Temperature · Rain · Wind · Humidity · 7-Day Forecast
+            </p>
         </div>
         """, unsafe_allow_html=True)
 
