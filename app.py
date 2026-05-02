@@ -41,30 +41,69 @@ except Exception:
     _ANALYTICS_OK = False
 # ──────────────────────────────────────────────────────────────────────────────
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&display=swap');
+# ── Theme init (must be before CSS render) ───────────────────────────────────
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
+_DARK = st.session_state.theme == "dark"
 
-html, body, [class*="css"] { font-family: 'Rajdhani', sans-serif; }
-
-.stApp {
-    background: linear-gradient(135deg, #0a0a1a 0%, #0d1b2a 50%, #0a0a1a 100%);
-    min-height: 100vh;
+# CSS variables resolved by Python so the markdown block stays static
+_T = {
+    "bg"       : "#0a0a1a" if _DARK else "#ffffff",
+    "bg2"      : "#0d1b2a" if _DARK else "#f8f8f8",
+    "sidebar"  : "rgba(5,10,25,0.97)" if _DARK else "#f0f0f0",
+    "card"     : "rgba(255,255,255,0.04)" if _DARK else "rgba(0,0,0,0.04)",
+    "card_b"   : "rgba(0,212,255,0.25)" if _DARK else "rgba(0,0,0,0.12)",
+    "txt"      : "#ffffff" if _DARK else "#111111",
+    "txt2"     : "rgba(255,255,255,0.55)" if _DARK else "rgba(0,0,0,0.55)",
+    "txt3"     : "rgba(255,255,255,0.3)"  if _DARK else "rgba(0,0,0,0.3)",
+    "accent"   : "#00d4ff",
+    "accent2"  : "#7b2fff",
+    "red"      : "#ff4444",
+    "green"    : "#00ff88",
+    "inp_bg"   : "rgba(0,0,0,0.45)" if _DARK else "#ffffff",
+    "inp_txt"  : "#ffffff" if _DARK else "#111111",
+    "inp_b"    : "rgba(0,212,255,0.3)" if _DARK else "rgba(0,0,0,0.2)",
+    "tab_bg"   : "rgba(0,212,255,0.05)" if _DARK else "rgba(0,0,0,0.05)",
+    "tab_sel"  : "rgba(0,212,255,0.18)" if _DARK else "rgba(0,0,0,0.12)",
+    "weather_bg": "linear-gradient(135deg,rgba(0,100,200,0.2),rgba(0,50,100,0.3))" if _DARK else "linear-gradient(135deg,#e8f4ff,#c8e8ff)",
+    "weather_txt": "white" if _DARK else "#003366",
+    # YouTube Music theme vars
+    "ytm_bg"   : "#0f0f0f" if _DARK else "#ffffff",
+    "ytm_card" : "#1a1a1a" if _DARK else "#f2f2f2",
+    "ytm_card2": "#212121" if _DARK else "#e8e8e8",
+    "ytm_txt"  : "#ffffff" if _DARK else "#030303",
+    "ytm_txt2" : "#aaaaaa" if _DARK else "#606060",
+    "ytm_red"  : "#ff0000",
+    "ytm_bar"  : "#1f1f1f" if _DARK else "#f8f8f8",
 }
 
-.main-box {
-    background: rgba(0, 212, 255, 0.05);
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&family=Roboto:wght@300;400;500;700&display=swap');
+
+html, body, [class*="css"] {{ font-family: "Rajdhani", sans-serif; }}
+
+.stApp {{
+    background: {_T["bg"]};
+    min-height: 100vh;
+    transition: background 0.3s;
+}}
+
+/* ── Main card ── */
+.main-box {{
+    background: {_T["card"]};
     padding: 25px;
     border-radius: 16px;
-    border: 1px solid rgba(0, 212, 255, 0.3);
-    color: white;
+    border: 1px solid {_T["card_b"]};
+    color: {_T["txt"]};
     margin-bottom: 20px;
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.1), inset 0 0 20px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
     backdrop-filter: blur(10px);
-}
+}}
 
-.hero-title {
-    font-family: 'Orbitron', sans-serif;
+/* ── Hero title ── */
+.hero-title {{
+    font-family: "Orbitron", sans-serif;
     font-size: 3rem;
     font-weight: 700;
     background: linear-gradient(90deg, #00d4ff, #7b2fff, #00d4ff);
@@ -74,138 +113,354 @@ html, body, [class*="css"] { font-family: 'Rajdhani', sans-serif; }
     text-align: center;
     animation: shimmer 3s infinite;
     margin-bottom: 0.2rem;
-}
-
-.hero-sub {
+}}
+.hero-sub {{
     text-align: center;
     color: rgba(0,212,255,0.6);
     font-size: 1rem;
     letter-spacing: 3px;
     text-transform: uppercase;
     margin-bottom: 2rem;
-}
+}}
+@keyframes shimmer {{ 0%{{background-position:0%}} 50%{{background-position:100%}} 100%{{background-position:0%}} }}
 
-@keyframes shimmer { 0%{background-position:0%} 50%{background-position:100%} 100%{background-position:0%} }
-
-.stat-card {
-    background: rgba(0,212,255,0.07);
-    border: 1px solid rgba(0,212,255,0.2);
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    color: white;
-}
-
-.stat-number {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 2rem;
-    color: #00d4ff;
-}
-
-.chat-bubble-user {
-    background: linear-gradient(135deg, #1a1a3e, #2a1a5e);
-    border: 1px solid rgba(123,47,255,0.4);
-    border-radius: 12px 12px 2px 12px;
-    padding: 12px 16px;
-    margin: 8px 0;
-    color: white;
-    max-width: 80%;
-    margin-left: auto;
-}
-
-.chat-bubble-ai {
-    background: linear-gradient(135deg, #0a2a3a, #0a1a2e);
-    border: 1px solid rgba(0,212,255,0.3);
-    border-radius: 12px 12px 12px 2px;
-    padding: 12px 16px;
-    margin: 8px 0;
-    color: white;
-    max-width: 80%;
-}
-
-.stButton > button {
-    background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(123,47,255,0.15));
-    color: #00d4ff;
-    border: 1px solid rgba(0,212,255,0.4);
+/* ── Buttons ── */
+.stButton > button {{
+    background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(123,47,255,0.12));
+    color: {_T["accent"]};
+    border: 1px solid rgba(0,212,255,0.35);
     border-radius: 8px;
-    font-family: 'Rajdhani', sans-serif;
+    font-family: "Rajdhani", sans-serif;
     font-weight: 600;
-    letter-spacing: 1px;
-    transition: all 0.3s;
-}
-
-.stButton > button:hover {
-    background: linear-gradient(135deg, rgba(0,212,255,0.3), rgba(123,47,255,0.3));
-    border-color: #00d4ff;
-    box-shadow: 0 0 15px rgba(0,212,255,0.4);
+    letter-spacing: 0.8px;
+    transition: all 0.25s;
+}}
+.stButton > button:hover {{
+    background: linear-gradient(135deg, rgba(0,212,255,0.28), rgba(123,47,255,0.28));
+    border-color: {_T["accent"]};
+    box-shadow: 0 0 14px rgba(0,212,255,0.35);
     transform: translateY(-1px);
-}
+}}
 
-.stTextInput > div > div > input, .stTextArea > div > div > textarea {
-    background: rgba(0,0,0,0.4) !important;
-    color: white !important;
-    border: 1px solid rgba(0,212,255,0.3) !important;
+/* ── Inputs ── */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div > div {{
+    background: {_T["inp_bg"]} !important;
+    color: {_T["inp_txt"]} !important;
+    border: 1px solid {_T["inp_b"]} !important;
     border-radius: 8px !important;
-}
+}}
 
-.stTabs [data-baseweb="tab-list"] { gap: 8px; }
-.stTabs [data-baseweb="tab"] {
-    background: rgba(0,212,255,0.05);
-    border: 1px solid rgba(0,212,255,0.2);
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] {{ gap: 6px; background: transparent; }}
+.stTabs [data-baseweb="tab"] {{
+    background: {_T["tab_bg"]};
+    border: 1px solid rgba(0,212,255,0.18);
     border-radius: 8px;
-    color: rgba(255,255,255,0.7);
-    font-family: 'Rajdhani', sans-serif;
-}
-.stTabs [aria-selected="true"] {
-    background: rgba(0,212,255,0.15) !important;
-    border-color: #00d4ff !important;
-    color: #00d4ff !important;
-}
+    color: {_T["txt2"]};
+    font-family: "Rajdhani", sans-serif;
+    font-weight: 600;
+}}
+.stTabs [aria-selected="true"] {{
+    background: {_T["tab_sel"]} !important;
+    border-color: {_T["accent"]} !important;
+    color: {_T["accent"]} !important;
+}}
 
-[data-testid="stSidebar"] {
-    background: rgba(5, 10, 25, 0.95);
-    border-right: 1px solid rgba(0,212,255,0.2);
-}
-
-.sidebar-logo {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.1rem;
-    color: #00d4ff;
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {{
+    background: {_T["sidebar"]} !important;
+    border-right: 1px solid rgba(0,212,255,0.18);
+}}
+.sidebar-logo {{
+    font-family: "Orbitron", sans-serif;
+    font-size: 1.05rem;
+    color: {_T["accent"]};
     text-align: center;
     padding: 10px;
     border: 1px solid rgba(0,212,255,0.3);
     border-radius: 8px;
-    margin-bottom: 15px;
-}
+    margin-bottom: 14px;
+}}
 
-.stAppDeployButton { display: none !important; }
-#MainMenu { visibility: hidden; }
-footer { visibility: hidden; }
+/* ── Misc ── */
+.stAppDeployButton {{ display: none !important; }}
+#MainMenu {{ visibility: hidden; }}
+footer {{ visibility: hidden; }}
+.online-dot {{
+    display: inline-block; width: 8px; height: 8px;
+    background: #00ff88; border-radius: 50%; margin-right: 6px;
+    animation: pulse 2s infinite;
+}}
+@keyframes pulse {{ 0%,100%{{opacity:1}} 50%{{opacity:0.3}} }}
 
-.weather-card {
-    background: linear-gradient(135deg, rgba(0,100,200,0.2), rgba(0,50,100,0.3));
+/* ── Weather card ── */
+.weather-card {{
+    background: {_T["weather_bg"]};
     border: 1px solid rgba(0,150,255,0.4);
     border-radius: 16px;
     padding: 30px;
     text-align: center;
+    color: {_T["weather_txt"]};
+}}
+
+/* ═══════════════════════════════════════
+   YOUTUBE MUSIC UI STYLES
+   ═══════════════════════════════════════ */
+.ytm-page {{
+    background: {_T["ytm_bg"]};
+    min-height: 100vh;
+    font-family: "Roboto", sans-serif;
+    color: {_T["ytm_txt"]};
+    padding: 0;
+}}
+.ytm-header {{
+    background: {_T["ytm_bar"]};
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}}
+.ytm-logo {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: {_T["ytm_txt"]};
+    text-decoration: none;
+}}
+.ytm-logo-icon {{
+    width: 36px; height: 36px;
+    background: {_T["ytm_red"]};
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+}}
+.ytm-chip-row {{
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}}
+.ytm-chip {{
+    background: {_T["ytm_card2"]};
+    color: {_T["ytm_txt"]};
+    border: none;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: "Roboto", sans-serif;
+    transition: background 0.2s;
+}}
+.ytm-chip:hover {{ background: #333; }}
+.ytm-chip.active {{ background: {_T["ytm_txt"]}; color: {_T["ytm_bg"]}; }}
+
+.ytm-card {{
+    background: {_T["ytm_card"]};
+    border-radius: 8px;
+    overflow: hidden;
+    transition: background 0.2s;
+    cursor: pointer;
+}}
+.ytm-card:hover {{ background: {_T["ytm_card2"]}; }}
+.ytm-thumb {{
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
+}}
+.ytm-card-info {{
+    padding: 8px 10px 12px;
+}}
+.ytm-card-title {{
+    color: {_T["ytm_txt"]};
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.3;
+    margin-bottom: 4px;
+}}
+.ytm-card-sub {{
+    color: {_T["ytm_txt2"]};
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.ytm-section-title {{
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: {_T["ytm_txt"]};
+    margin: 20px 0 12px;
+    font-family: "Roboto", sans-serif;
+}}
+.ytm-now-playing {{
+    background: {_T["ytm_bar"]};
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}}
+.ytm-np-thumb {{
+    width: 52px; height: 52px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}}
+.ytm-np-info {{ flex: 1; min-width: 0; }}
+.ytm-np-title {{
+    color: {_T["ytm_txt"]};
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.ytm-np-artist {{
+    color: {_T["ytm_txt2"]};
+    font-size: 0.78rem;
+}}
+.ytm-np-badge {{
+    background: {_T["ytm_red"]};
     color: white;
-}
-
-.online-dot {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}}
+.ytm-play-btn {{
+    background: {_T["ytm_red"]} !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 20px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px !important;
+}}
+.ytm-play-btn:hover {{
+    background: #cc0000 !important;
+    box-shadow: 0 4px 16px rgba(255,0,0,0.4) !important;
+    transform: translateY(-1px) !important;
+}}
+.ytm-queue-btn {{
+    background: transparent !important;
+    color: {_T["ytm_txt2"]} !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    border-radius: 20px !important;
+}}
+.ytm-search-bar input {{
+    background: {_T["ytm_card"]} !important;
+    color: {_T["ytm_txt"]} !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    border-radius: 24px !important;
+    padding: 10px 18px !important;
+    font-family: "Roboto", sans-serif !important;
+}}
+.ytm-pill {{
     display: inline-block;
-    width: 8px; height: 8px;
-    background: #00ff88;
-    border-radius: 50%;
-    margin-right: 6px;
-    animation: pulse 2s infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    background: {_T["ytm_card2"]};
+    color: {_T["ytm_txt"]};
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.82rem;
+    margin: 3px;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.1);
+}}
+.ytm-playlist-row {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: {_T["ytm_card"]};
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}}
+.ytm-playlist-row:hover {{ background: {_T["ytm_card2"]}; }}
+.ytm-playlist-thumb {{
+    width: 48px; height: 48px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #333;
+}}
+.ytm-track-row {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    cursor: pointer;
+}}
+.ytm-track-row:hover {{ background: {_T["ytm_card2"]}; }}
 
-.gps-btn {
-    background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,212,100,0.15)) !important;
-    color: #00ff88 !important;
-    border: 1px solid rgba(0,255,136,0.4) !important;
-}
+/* ── Messaging UI ── */
+.msg-bubble-me {{
+    background: linear-gradient(135deg, #1a1a3e, #2a1a5e);
+    border: 1px solid rgba(123,47,255,0.35);
+    border-radius: 16px 16px 4px 16px;
+    padding: 10px 14px;
+    max-width: 72%;
+    margin-left: auto;
+    margin-bottom: 6px;
+    color: white;
+    font-size: 0.92rem;
+}}
+.msg-bubble-them {{
+    background: {"rgba(30,30,50,0.9)" if _DARK else "rgba(230,230,240,0.9)"};
+    border: 1px solid {"rgba(0,212,255,0.2)" if _DARK else "rgba(0,0,0,0.1)"};
+    border-radius: 16px 16px 16px 4px;
+    padding: 10px 14px;
+    max-width: 72%;
+    margin-right: auto;
+    margin-bottom: 6px;
+    color: {_T["txt"]};
+    font-size: 0.92rem;
+}}
+.msg-ts {{
+    font-size: 0.68rem;
+    color: {_T["txt3"]};
+    margin-top: 3px;
+}}
+.conv-item {{
+    background: {_T["card"]};
+    border: 1px solid {_T["card_b"]};
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}}
+.conv-item:hover {{ background: rgba(0,212,255,0.08); }}
+.conv-item.active {{ border-color: {_T["accent"]}; background: rgba(0,212,255,0.1); }}
+.req-card {{
+    background: {"rgba(123,47,255,0.08)" if _DARK else "rgba(123,47,255,0.06)"};
+    border: 1px solid rgba(123,47,255,0.3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -883,6 +1138,13 @@ with st.sidebar:
                         st.rerun()
 
     st.markdown("---")
+    # ── Theme toggle ─────────────────────────────────────────────────────────
+    current_theme = st.session_state.get("theme", "dark")
+    theme_label = "☀️  Light Mode" if current_theme == "dark" else "🌙  Dark Mode"
+    if st.button(theme_label, use_container_width=True, key="theme_toggle"):
+        st.session_state.theme = "light" if current_theme == "dark" else "dark"
+        st.rerun()
+    st.markdown("---")
     if st.button("🔐  Logout", use_container_width=True):
         user_data = get_user(st.session_state.user)
         if user_data:
@@ -1044,7 +1306,7 @@ elif st.session_state.current_page == "Messages":
         st.error("Could not load user data.")
         st.stop()
 
-    friends_list = u_data.get("friends", [])
+    friends_list = u_data.get("friends") or []
 
     # ── Check for incoming jams ───────────────────────────────────────────────
     incoming_jam = get_jam(st.session_state.user)
@@ -1207,7 +1469,9 @@ elif st.session_state.current_page == "Messages":
     # ── REQUESTS TAB ──────────────────────────────────────────────────────────
     with t_requests:
         st.markdown("<h4 style='color:#7b2fff;'>📨 Incoming Friend Requests</h4>", unsafe_allow_html=True)
-        incoming_reqs = u_data.get("requests", [])
+        # Re-fetch to get latest state; use copy so iteration is safe
+        u_data_fresh = get_user(st.session_state.user) or u_data
+        incoming_reqs = list(u_data_fresh.get("requests") or [])
         if not incoming_reqs:
             st.markdown("<p style='color:rgba(255,255,255,0.4);'>No pending requests.</p>", unsafe_allow_html=True)
         else:
@@ -1222,18 +1486,36 @@ elif st.session_state.current_page == "Messages":
                     </div>""", unsafe_allow_html=True)
                 with rc2:
                     if st.button("✅ Accept", key=f"acc_{r}", use_container_width=True):
-                        u_data["friends"].append(r)
-                        u_data["requests"].remove(r)
-                        save_user(st.session_state.user, u_data)
-                        r_data = get_user(r)
-                        if r_data and st.session_state.user not in r_data.get("friends", []):
-                            r_data["friends"].append(st.session_state.user)
-                            save_user(r, r_data)
+                        ud = get_user(st.session_state.user)
+                        if ud:
+                            my_friends  = list(ud.get("friends")  or [])
+                            my_requests = list(ud.get("requests") or [])
+                            if r in my_requests:
+                                my_requests.remove(r)
+                            if r not in my_friends:
+                                my_friends.append(r)
+                            ud["friends"]  = my_friends
+                            ud["requests"] = my_requests
+                            save_user(st.session_state.user, ud)
+                            # Add back-link to sender
+                            r_data = get_user(r)
+                            if r_data:
+                                rf = list(r_data.get("friends") or [])
+                                if st.session_state.user not in rf:
+                                    rf.append(st.session_state.user)
+                                r_data["friends"] = rf
+                                save_user(r, r_data)
+                        st.success(f"✅ You and {r} are now friends!")
                         st.rerun()
                 with rc3:
                     if st.button("❌ Decline", key=f"dec_{r}", use_container_width=True):
-                        u_data["requests"].remove(r)
-                        save_user(st.session_state.user, u_data)
+                        ud = get_user(st.session_state.user)
+                        if ud:
+                            my_requests = list(ud.get("requests") or [])
+                            if r in my_requests:
+                                my_requests.remove(r)
+                            ud["requests"] = my_requests
+                            save_user(st.session_state.user, ud)
                         st.rerun()
 
 
@@ -1243,140 +1525,13 @@ elif st.session_state.current_page == "Messages":
 elif st.session_state.current_page == "Music":
     import streamlit.components.v1 as _comp
 
-    # ── YouTube Music CSS overrides ───────────────────────────────────────────
-    st.markdown("""
-    <style>
-    /* Page background */
-    .stApp { background:#0f0f0f !important; }
-
-    /* Hide default streamlit chrome on this page */
-    [data-testid="stSidebar"] { background:#212121 !important; border-right:1px solid #333 !important; }
-
-    /* YTM Tab pills */
-    .ytm-nav { display:flex; gap:8px; padding:12px 0; flex-wrap:wrap; }
-    .ytm-nav a {
-        background:#212121; color:#aaa; text-decoration:none;
-        padding:7px 18px; border-radius:20px; font-size:0.85rem;
-        border:1px solid #333; transition:all 0.2s; cursor:pointer;
-    }
-    .ytm-nav a.active, .ytm-nav a:hover {
-        background:#ff0000; color:#fff; border-color:#ff0000;
-    }
-
-    /* YTM Card */
-    .ytm-card {
-        background:#212121; border-radius:8px; overflow:hidden;
-        cursor:pointer; transition:background 0.2s; margin-bottom:4px;
-    }
-    .ytm-card:hover { background:#2a2a2a; }
-    .ytm-card img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
-    .ytm-card .ytm-card-info { padding:8px 10px 10px; }
-    .ytm-card .ytm-card-title {
-        color:#fff; font-size:0.83rem; font-weight:500;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .ytm-card .ytm-card-artist { color:#aaa; font-size:0.75rem; margin-top:2px; }
-
-    /* YTM Song row */
-    .ytm-row {
-        display:flex; align-items:center; gap:12px; padding:8px 12px;
-        border-radius:4px; transition:background 0.15s; cursor:pointer;
-    }
-    .ytm-row:hover { background:#1e1e1e; }
-    .ytm-row img { width:48px; height:48px; border-radius:4px; object-fit:cover; }
-    .ytm-row .ytm-row-info { flex:1; min-width:0; }
-    .ytm-row .ytm-row-title { color:#fff; font-size:0.88rem; font-weight:500;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .ytm-row .ytm-row-artist { color:#aaa; font-size:0.78rem; }
-
-    /* YTM Search bar */
-    .ytm-search-wrap { position:relative; }
-    .ytm-search-wrap input {
-        width:100%; background:#212121 !important; border:1px solid #333 !important;
-        border-radius:24px !important; padding:10px 20px !important;
-        color:#fff !important; font-size:0.9rem !important;
-    }
-    .ytm-search-wrap input:focus { border-color:#ff0000 !important; box-shadow:none !important; }
-
-    /* Player bar */
-    .ytm-player-outer {
-        background:#212121; border-top:1px solid #333; border-radius:12px;
-        padding:0; margin-bottom:12px; overflow:hidden;
-    }
-    .ytm-player-bar {
-        display:flex; align-items:center; gap:14px;
-        padding:10px 16px; background:#212121;
-    }
-    .ytm-player-bar img { width:52px; height:52px; border-radius:4px; object-fit:cover; }
-    .ytm-player-info { flex:1; min-width:0; }
-    .ytm-player-title { color:#fff; font-weight:600; font-size:0.9rem;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .ytm-player-artist { color:#aaa; font-size:0.8rem; }
-
-    /* Section headings */
-    .ytm-section-title {
-        color:#fff; font-size:1.05rem; font-weight:600; margin:20px 0 12px;
-    }
-
-    /* Pill chip */
-    .ytm-chip {
-        display:inline-block; background:#212121; color:#aaa;
-        border:1px solid #333; border-radius:16px;
-        padding:5px 14px; font-size:0.78rem; margin:3px; cursor:pointer;
-    }
-    .ytm-chip:hover { background:#333; color:#fff; }
-
-    /* Subscription badge */
-    .ytm-sub-badge {
-        background:#212121; border-radius:50%; overflow:hidden;
-        width:64px; height:64px; margin:0 auto 6px;
-        border:2px solid #333;
-    }
-    .ytm-sub-badge img { width:100%; height:100%; object-fit:cover; }
-
-    /* Override Streamlit buttons on music page */
-    section[data-testid="stMain"] .stButton > button {
-        background:#212121 !important; color:#fff !important;
-        border:1px solid #333 !important; border-radius:4px !important;
-        font-size:0.82rem !important; letter-spacing:0 !important;
-    }
-    section[data-testid="stMain"] .stButton > button:hover {
-        background:#ff0000 !important; border-color:#ff0000 !important;
-        box-shadow:none !important; transform:none !important;
-    }
-
-    /* Tab bar */
-    .stTabs [data-baseweb="tab-list"] { background:transparent !important; gap:4px !important; }
-    .stTabs [data-baseweb="tab"] {
-        background:#212121 !important; color:#aaa !important;
-        border:1px solid #333 !important; border-radius:20px !important;
-        font-size:0.82rem !important; padding:4px 16px !important;
-    }
-    .stTabs [aria-selected="true"] {
-        background:#ff0000 !important; color:#fff !important; border-color:#ff0000 !important;
-    }
-
-    /* Text input */
-    .stTextInput > div > div > input {
-        background:#212121 !important; border:1px solid #444 !important;
-        border-radius:24px !important; color:#fff !important;
-        padding:10px 18px !important;
-    }
-    .stTextInput > div > div > input:focus { border-color:#ff0000 !important; }
-
-    /* Section dividers */
-    hr { border-color:#333 !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
     # ── Google OAuth setup ────────────────────────────────────────────────────
     _OAUTH_OK = False
     try:
         from streamlit_oauth import OAuth2Component
         GCLIENT_ID     = st.secrets.get("GOOGLE_CLIENT_ID", "")
         GCLIENT_SECRET = st.secrets.get("GOOGLE_CLIENT_SECRET", "")
-        REDIRECT_URI   = st.secrets.get("OAUTH_REDIRECT_URI",
-                                        "https://lakshmeeyamai.streamlit.app")
+        REDIRECT_URI   = st.secrets.get("OAUTH_REDIRECT_URI", "https://lakshmeeyamai.streamlit.app")
         if GCLIENT_ID and GCLIENT_SECRET:
             _oauth2 = OAuth2Component(
                 GCLIENT_ID, GCLIENT_SECRET,
@@ -1389,68 +1544,78 @@ elif st.session_state.current_page == "Music":
     except Exception:
         pass
 
-    # ── YouTube OAuth API helpers ─────────────────────────────────────────────
-    def _yt_h():
+    HAS_YT_KEY     = bool(st.secrets.get("YOUTUBE_API_KEY", ""))
+    is_yt_connected = bool(st.session_state.get("yt_token"))
+
+    def yt_headers():
         tok = st.session_state.get("yt_token", {})
         return {"Authorization": f"Bearer {tok.get('access_token', '')}"}
 
-    def _yt_liked(n=50):
+    def yt_api(endpoint, params):
         try:
-            r = requests.get("https://www.googleapis.com/youtube/v3/videos",
-                params={"part":"snippet","myRating":"like",
-                        "maxResults":n,"videoCategoryId":"10"},
-                headers=_yt_h(), timeout=10).json()
-            return [{"id":{"videoId":i["id"]},"snippet":i["snippet"]} for i in r.get("items",[])]
-        except: return []
+            r = requests.get(endpoint, params=params, headers=yt_headers(), timeout=10)
+            return r.json()
+        except:
+            return {}
 
-    def _yt_playlists(n=50):
-        try:
-            r = requests.get("https://www.googleapis.com/youtube/v3/playlists",
-                params={"part":"snippet,contentDetails","mine":"true","maxResults":n},
-                headers=_yt_h(), timeout=10).json()
-            return r.get("items", [])
-        except: return []
+    def yt_search_auth(q, n=16):
+        d = yt_api("https://www.googleapis.com/youtube/v3/search",
+                   {"part":"snippet","q":q+" music","type":"video","videoCategoryId":"10","maxResults":n})
+        return d.get("items",[])
 
-    def _yt_pl_items(pid, n=50):
-        try:
-            r = requests.get("https://www.googleapis.com/youtube/v3/playlistItems",
-                params={"part":"snippet","playlistId":pid,"maxResults":n},
-                headers=_yt_h(), timeout=10).json()
-            items = []
-            for item in r.get("items",[]):
-                sn = item["snippet"]
-                vid = sn.get("resourceId",{}).get("videoId","")
-                items.append({"id":{"videoId":vid},"snippet":sn})
-            return items
-        except: return []
+    def yt_trending_auth(n=24):
+        d = yt_api("https://www.googleapis.com/youtube/v3/videos",
+                   {"part":"snippet","chart":"mostPopular","videoCategoryId":"10","maxResults":n,"regionCode":"IN"})
+        return [{"id":{"videoId":i["id"]},"snippet":i["snippet"]} for i in d.get("items",[])]
 
-    def _yt_subs(n=50):
-        try:
-            r = requests.get("https://www.googleapis.com/youtube/v3/subscriptions",
-                params={"part":"snippet","mine":"true","maxResults":n},
-                headers=_yt_h(), timeout=10).json()
-            return r.get("items", [])
-        except: return []
+    def yt_liked(n=50):
+        d = yt_api("https://www.googleapis.com/youtube/v3/videos",
+                   {"part":"snippet","myRating":"like","maxResults":n,"videoCategoryId":"10"})
+        return [{"id":{"videoId":i["id"]},"snippet":i["snippet"]} for i in d.get("items",[])]
 
-    def _yt_search(q, n=16):
+    def yt_playlists(n=50):
+        d = yt_api("https://www.googleapis.com/youtube/v3/playlists",
+                   {"part":"snippet,contentDetails","mine":"true","maxResults":n})
+        return d.get("items",[])
+
+    def yt_pl_items(pl_id, n=50):
+        d = yt_api("https://www.googleapis.com/youtube/v3/playlistItems",
+                   {"part":"snippet","playlistId":pl_id,"maxResults":n})
+        return [{"id":{"videoId":i["snippet"].get("resourceId",{}).get("videoId","")},
+                 "snippet":i["snippet"]} for i in d.get("items",[])]
+
+    def yt_subs(n=50):
+        d = yt_api("https://www.googleapis.com/youtube/v3/subscriptions",
+                   {"part":"snippet","mine":"true","maxResults":n})
+        return d.get("items",[])
+
+    def yt_search_key(q, n=16):
+        key = st.secrets.get("YOUTUBE_API_KEY","")
+        if not key: return []
         try:
-            r = requests.get("https://www.googleapis.com/youtube/v3/search",
+            d = requests.get("https://www.googleapis.com/youtube/v3/search",
                 params={"part":"snippet","q":q+" music","type":"video",
-                        "videoCategoryId":"10","maxResults":n},
-                headers=_yt_h(), timeout=10).json()
-            return r.get("items", [])
+                        "videoCategoryId":"10","maxResults":n,"key":key},
+                timeout=10).json()
+            return d.get("items",[])
         except: return []
 
-    def _yt_trending(n=16):
+    def yt_trending_key(n=24):
+        key = st.secrets.get("YOUTUBE_API_KEY","")
+        if not key: return []
         try:
-            api_key = st.secrets.get("YOUTUBE_API_KEY","")
-            params  = {"part":"snippet","chart":"mostPopular",
-                       "videoCategoryId":"10","maxResults":n,"regionCode":"IN"}
-            if api_key: params["key"] = api_key
-            r = requests.get("https://www.googleapis.com/youtube/v3/videos",
-                params=params, headers=_yt_h(), timeout=10).json()
-            return [{"id":{"videoId":i["id"]},"snippet":i["snippet"]} for i in r.get("items",[])]
+            d = requests.get("https://www.googleapis.com/youtube/v3/videos",
+                params={"part":"snippet","chart":"mostPopular","videoCategoryId":"10",
+                        "maxResults":n,"regionCode":"IN","key":key},
+                timeout=10).json()
+            return [{"id":{"videoId":i["id"]},"snippet":i["snippet"]} for i in d.get("items",[])]
         except: return []
+
+    def do_search(q, n=16):
+        return yt_search_auth(q, n) if is_yt_connected else yt_search_key(q, n)
+
+    def do_trending(n=24):
+        return yt_trending_auth(n) if is_yt_connected else yt_trending_key(n)
 
     def _play(vid_id, title, artist, thumb):
         st.session_state.now_playing_id     = vid_id
@@ -1458,383 +1623,333 @@ elif st.session_state.current_page == "Music":
         st.session_state.now_playing_artist = artist
         st.session_state.now_playing_thumb  = thumb
 
-    def _thumb(snip):
-        t = snip.get("thumbnails", {})
-        return (t.get("medium") or t.get("high") or t.get("default") or {}).get("url","")
-
-    # ── Render card grid (YTM style) ──────────────────────────────────────────
-    def ytm_grid(items, cols=4, prefix="g"):
+    # ── YTM-style card grid renderer ─────────────────────────────────────────
+    def render_ytm_grid(items, cols=4, prefix="g"):
         if not items:
-            st.markdown("<p style='color:#aaa; text-align:center; padding:40px 0;'>Nothing here yet.</p>",
-                        unsafe_allow_html=True)
+            st.markdown(
+                "<p style='color:#aaa; text-align:center; padding:40px;'>No results.</p>",
+                unsafe_allow_html=True)
             return
         rows = [items[i:i+cols] for i in range(0, len(items), cols)]
-        for row in rows:
-            gcols = st.columns(cols)
+        for ri, row in enumerate(rows):
+            grid_cols = st.columns(cols)
             for gi, item in enumerate(row):
-                vid   = item["id"]["videoId"]
-                snip  = item["snippet"]
-                title = snip.get("title","")[:55]
-                art   = snip.get("channelTitle","")[:35]
-                thumb = _thumb(snip)
-                with gcols[gi]:
-                    if thumb:
-                        st.markdown(f"<img src='{thumb}' style='width:100%;border-radius:6px;"
-                                    f"aspect-ratio:16/9;object-fit:cover;display:block;margin-bottom:6px;'>",
-                                    unsafe_allow_html=True)
-                    st.markdown(f"<div style='color:#fff;font-size:0.82rem;font-weight:500;"
-                                f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-                                f"margin-bottom:2px;'>{title}</div>"
-                                f"<div style='color:#aaa;font-size:0.74rem;margin-bottom:6px;'>{art}</div>",
-                                unsafe_allow_html=True)
-                    b1, b2 = st.columns(2)
+                vid_id = item["id"]["videoId"]
+                snip   = item["snippet"]
+                title  = snip.get("title","Unknown")[:52]
+                artist = snip.get("channelTitle","")[:30]
+                thumb  = (snip.get("thumbnails",{}).get("medium",{}) or
+                          snip.get("thumbnails",{}).get("default",{})).get("url","")
+                with grid_cols[gi]:
+                    card_html = f"""
+<div class="ytm-card">
+  {"<img src='" + thumb + "' class='ytm-thumb'/>" if thumb else "<div style='aspect-ratio:16/9;background:#333;width:100%;display:block;'></div>"}
+  <div class="ytm-card-info">
+    <div class="ytm-card-title">{title}</div>
+    <div class="ytm-card-sub">{artist}</div>
+  </div>
+</div>"""
+                    st.markdown(card_html, unsafe_allow_html=True)
+                    b1, b2 = st.columns([3,2])
                     with b1:
-                        if st.button("▶", key=f"{prefix}_{vid}_{gi}_p",
+                        if st.button("▶ Play", key=f"{prefix}_{ri}_{gi}_p",
                                      use_container_width=True):
-                            _play(vid, title, art, thumb); st.rerun()
+                            _play(vid_id, title, artist, thumb)
+                            st.rerun()
                     with b2:
-                        if st.button("＋", key=f"{prefix}_{vid}_{gi}_q",
+                        if st.button("＋Queue", key=f"{prefix}_{ri}_{gi}_q",
                                      use_container_width=True):
                             st.session_state.queue.append(
-                                {"id":vid,"title":title,"artist":art,"thumb":thumb})
-                            st.toast(f"Added to queue")
+                                {"id":vid_id,"title":title,"artist":artist,"thumb":thumb})
+                            st.toast(f"Queued: {title[:28]}")
 
-    # ── Render song row list (YTM style) ──────────────────────────────────────
-    def ytm_list(items, prefix="l"):
+    # ── YTM track-row renderer (for playlists / liked) ────────────────────────
+    def render_ytm_tracklist(items, prefix="tl"):
         if not items:
-            st.markdown("<p style='color:#aaa;'>Nothing here yet.</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color:#aaa;'>No tracks.</p>", unsafe_allow_html=True)
             return
         for i, item in enumerate(items):
-            vid   = item["id"]["videoId"]
-            snip  = item["snippet"]
-            title = snip.get("title","")[:60]
-            art   = snip.get("channelTitle","")[:40]
-            thumb = _thumb(snip)
-            c1,c2,c3,c4 = st.columns([1,5,1,1])
+            vid_id = item["id"]["videoId"]
+            snip   = item["snippet"]
+            title  = snip.get("title","Unknown")[:55]
+            artist = snip.get("channelTitle","")[:30]
+            thumb  = (snip.get("thumbnails",{}).get("medium",{}) or
+                      snip.get("thumbnails",{}).get("default",{})).get("url","")
+            c1, c2, c3, c4 = st.columns([0.8, 5, 1.5, 1.5])
             with c1:
                 if thumb:
-                    st.markdown(f"<img src='{thumb}' style='width:48px;height:48px;"
-                                f"border-radius:4px;object-fit:cover;'>",
+                    st.image(thumb, width=48)
+                else:
+                    st.markdown("<div style='width:48px;height:48px;background:#333;border-radius:4px;'></div>",
                                 unsafe_allow_html=True)
             with c2:
-                st.markdown(f"<div style='color:#fff;font-size:0.88rem;font-weight:500;"
-                            f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-                            f"padding-top:4px;'>{title}</div>"
-                            f"<div style='color:#aaa;font-size:0.78rem;'>{art}</div>",
+                st.markdown(f"<div style='color:{_T['ytm_txt']};font-size:.88rem;font-weight:500;margin-top:4px;'>{title}</div>"
+                            f"<div style='color:{_T['ytm_txt2']};font-size:.76rem;'>{artist}</div>",
                             unsafe_allow_html=True)
             with c3:
-                if st.button("▶", key=f"{prefix}_{vid}_{i}_p", use_container_width=True):
-                    _play(vid, title, art, thumb); st.rerun()
+                if st.button("▶", key=f"{prefix}_{i}_p", use_container_width=True):
+                    _play(vid_id, title, artist, thumb)
+                    # remaining tracks → queue
+                    remaining = []
+                    for j, it in enumerate(items):
+                        if j > i:
+                            v2 = it["id"]["videoId"]
+                            s2 = it["snippet"]
+                            t2 = (s2.get("thumbnails",{}).get("medium",{}) or
+                                  s2.get("thumbnails",{}).get("default",{})).get("url","")
+                            remaining.append({"id":v2,"title":s2.get("title",""),
+                                              "artist":s2.get("channelTitle",""),"thumb":t2})
+                    st.session_state.queue = remaining
+                    st.rerun()
             with c4:
-                if st.button("＋", key=f"{prefix}_{vid}_{i}_q", use_container_width=True):
+                if st.button("＋", key=f"{prefix}_{i}_q", use_container_width=True):
                     st.session_state.queue.append(
-                        {"id":vid,"title":title,"artist":art,"thumb":thumb})
-                    st.toast("Added to queue")
-            st.markdown("<div style='height:1px;background:#1e1e1e;margin:2px 0;'></div>",
+                        {"id":vid_id,"title":title,"artist":artist,"thumb":thumb})
+                    st.toast(f"Queued: {title[:25]}")
+            st.markdown(f"<hr style='border:none;border-top:1px solid {_T['ytm_card2']};margin:2px 0;'>",
                         unsafe_allow_html=True)
 
-    is_connected = bool(st.session_state.get("yt_token"))
+    # ════════════════════════════════════════════════════════════════════
+    # YTM HEADER (logo + search + Google connect)
+    # ════════════════════════════════════════════════════════════════════
+    st.markdown(f"""
+<div class="ytm-header">
+  <div class="ytm-logo">
+    <div class="ytm-logo-icon">🎵</div>
+    <span style="font-family:Roboto,sans-serif;font-weight:700;color:{_T['ytm_txt']};">
+      Lakshmeeyam<span style="color:{_T['ytm_red']};"> Music</span>
+    </span>
+  </div>
+</div>""", unsafe_allow_html=True)
 
-    # ══════════════════════════════════════════════════════════════════════════
-    #  TOP BAR  — Logo · Search · Account
-    # ══════════════════════════════════════════════════════════════════════════
-    top1, top2, top3 = st.columns([2, 5, 2])
-    with top1:
-        st.markdown("""
-        <div style='display:flex;align-items:center;gap:8px;padding:8px 0;'>
-            <div style='background:#ff0000;width:28px;height:28px;border-radius:50%;
-            display:flex;align-items:center;justify-content:center;font-size:14px;'>🎵</div>
-            <span style='color:#fff;font-weight:700;font-size:1rem;letter-spacing:-0.5px;'>
-            YouTube <span style='color:#ff0000;'>Music</span></span>
-        </div>""", unsafe_allow_html=True)
-
-    with top2:
-        search_q = st.text_input("", placeholder="🔍  Search songs, albums, artists",
-                                 label_visibility="collapsed", key="ytm_search_main")
-        if search_q and search_q != st.session_state.get("_last_search"):
-            st.session_state._last_search = search_q
-            fn = _yt_search if is_connected else youtube_search
-            with st.spinner(""):
-                st.session_state.music_search_results = fn(search_q, 16)
-            st.session_state.ytm_nav = "search"
-            st.rerun()
-
-    with top3:
-        if is_connected:
-            email = st.session_state.get("yt_email","Connected")
-            st.markdown(f"""
-            <div style='display:flex;align-items:center;gap:8px;padding-top:8px;'>
-                <div style='width:30px;height:30px;background:#ff0000;border-radius:50%;
-                display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;'>
-                {email[0].upper() if email else "G"}</div>
-                <span style='color:#aaa;font-size:0.78rem;'>{email.split("@")[0]}</span>
-            </div>""", unsafe_allow_html=True)
-            if st.button("Sign out", key="ytm_signout"):
+    # Google connect bar
+    gc1, gc2, gc3 = st.columns([4, 2, 1])
+    with gc1:
+        if is_yt_connected:
+            yt_email = st.session_state.get("yt_email","Your Google Account")
+            st.markdown(
+                f"<div style='background:rgba(0,200,80,0.1);border:1px solid rgba(0,200,80,0.35);"
+                f"border-radius:8px;padding:7px 14px;color:#00c850;font-size:.85rem;'>"
+                f"✅ <b>{yt_email}</b> connected</div>",
+                unsafe_allow_html=True)
+        else:
+            st.markdown(
+                f"<div style='background:{_T['ytm_card']};border:1px solid rgba(255,255,255,0.1);"
+                f"border-radius:8px;padding:7px 14px;color:{_T['ytm_txt2']};font-size:.85rem;'>"
+                f"🔗 Connect Google to access your real YouTube Music library</div>",
+                unsafe_allow_html=True)
+    with gc2:
+        if not is_yt_connected and _OAUTH_OK:
+            result = _oauth2.authorize_button(
+                name="🎵 Connect Google",
+                redirect_uri=REDIRECT_URI,
+                scope="openid email profile https://www.googleapis.com/auth/youtube.readonly",
+                key="yt_google_oauth", use_container_width=True,
+                icon="https://www.google.com/favicon.ico"
+            )
+            if result and "token" in result:
+                st.session_state.yt_token = result["token"]
+                try:
+                    info = requests.get(
+                        "https://www.googleapis.com/oauth2/v3/userinfo",
+                        headers={"Authorization": f"Bearer {result['token']['access_token']}"},
+                        timeout=8).json()
+                    st.session_state.yt_email = info.get("email","")
+                except Exception:
+                    pass
+                st.rerun()
+        elif not is_yt_connected and not _OAUTH_OK:
+            st.info("Add GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET to secrets.")
+    with gc3:
+        if is_yt_connected:
+            if st.button("Disconnect", key="yt_disconnect", use_container_width=True):
                 st.session_state.yt_token = None
                 st.session_state.yt_email = ""
+                for k in ["yt_liked_cache","yt_playlists_cache","yt_pl_items_cache",
+                          "yt_subs_cache","home_trending"]:
+                    st.session_state.pop(k, None)
                 st.rerun()
-        else:
-            if _OAUTH_OK:
-                result = _oauth2.authorize_button(
-                    "Sign in", redirect_uri=REDIRECT_URI,
-                    scope="openid email profile https://www.googleapis.com/auth/youtube.readonly",
-                    key="ytm_oauth_top", icon="https://www.google.com/favicon.ico",
-                    use_container_width=True
-                )
-                if result and "token" in result:
-                    st.session_state.yt_token = result["token"]
-                    try:
-                        info = requests.get("https://www.googleapis.com/oauth2/v3/userinfo",
-                            headers={"Authorization":f"Bearer {result['token']['access_token']}"},
-                            timeout=8).json()
-                        st.session_state.yt_email = info.get("email","")
-                        for k in ["yt_liked_cache","yt_playlists_cache","yt_subs_cache","home_trending"]:
-                            st.session_state.pop(k, None)
-                    except: pass
-                    st.rerun()
-            else:
-                st.markdown("<p style='color:#aaa;font-size:0.8rem;padding-top:10px;'>"
-                            "Add OAuth secrets</p>", unsafe_allow_html=True)
 
-    # ══════════════════════════════════════════════════════════════════════════
-    #  NOW PLAYING BAR
-    # ══════════════════════════════════════════════════════════════════════════
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ════════════════════════════════════════════════════════════════════
+    # NOW PLAYING BAR
+    # ════════════════════════════════════════════════════════════════════
     if st.session_state.now_playing_id:
         vid_id    = st.session_state.now_playing_id
         vid_title = st.session_state.now_playing_title
         vid_thumb = st.session_state.now_playing_thumb
-        vid_art   = st.session_state.now_playing_artist
+        vid_artist= st.session_state.now_playing_artist
 
         st.markdown(f"""
-        <div class='ytm-player-outer'>
-            <div class='ytm-player-bar'>
-                <img src='{vid_thumb}'/>
-                <div class='ytm-player-info'>
-                    <div class='ytm-player-title'>{vid_title}</div>
-                    <div class='ytm-player-artist'>{vid_art}</div>
-                </div>
-                <div style='color:#ff0000;font-size:0.78rem;font-weight:600;letter-spacing:1px;'>
-                ▶ NOW PLAYING</div>
-            </div>
-        </div>""", unsafe_allow_html=True)
+<div class="ytm-now-playing">
+  {"<img src='" + vid_thumb + "' class='ytm-np-thumb'/>" if vid_thumb else ""}
+  <div class="ytm-np-info">
+    <div class="ytm-np-title">{vid_title}</div>
+    <div class="ytm-np-artist">{vid_artist}</div>
+  </div>
+  <div class="ytm-np-badge">▶ PLAYING</div>
+</div>""", unsafe_allow_html=True)
 
-        _comp.html(f"""
-        <div style='background:#181818;'>
-        <iframe id='ytplayer' width='100%' height='80'
-            src='https://www.youtube-nocookie.com/embed/{vid_id}?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3&showinfo=0&controls=1'
-            frameborder='0' allow='autoplay; encrypted-media; picture-in-picture'
-            allowfullscreen style='display:block;'>
-        </iframe></div>""", height=90)
+        _comp.html(
+            f"<div style='background:#0f0f0f;border-radius:10px;overflow:hidden;'>"
+            f"<iframe width='100%' height='80' frameborder='0' allow='autoplay;encrypted-media'"
+            f" src='https://www.youtube-nocookie.com/embed/{vid_id}"
+            f"?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3'></iframe></div>",
+            height=88)
 
-        if st.session_state.queue:
-            nxt = st.session_state.queue[0]
-            nc1, nc2, nc3 = st.columns([3,3,1])
-            with nc2:
-                if st.button(f"⏭  Up next: {nxt['title'][:30]}",
+        np1, np2, np3 = st.columns([1, 2, 1])
+        with np2:
+            if st.session_state.queue:
+                nxt = st.session_state.queue[0]
+                if st.button(f"⏭  {nxt['title'][:38]}",
                              use_container_width=True, key="ytm_next"):
                     _play(nxt["id"], nxt["title"], nxt.get("artist",""), nxt.get("thumb",""))
                     st.session_state.queue = st.session_state.queue[1:]
                     st.rerun()
-
-    # ══════════════════════════════════════════════════════════════════════════
-    #  NAVIGATION  — YTM pill tabs
-    # ══════════════════════════════════════════════════════════════════════════
-    if "ytm_nav" not in st.session_state:
-        st.session_state.ytm_nav = "home"
-
-    nav_items = [
-        ("home",    "🏠 Home"),
-        ("explore", "🔍 Explore"),
-        ("liked",   "❤️ Liked"),
-        ("playlists","📚 Playlists"),
-        ("subs",    "📺 Subscriptions"),
-        ("library", "📋 Library"),
-        ("jam",     "🎵 Jam"),
-        ("queue",   "🔢 Queue"),
-    ]
-    nav_cols = st.columns(len(nav_items))
-    for ni, (key, label) in enumerate(nav_items):
-        with nav_cols[ni]:
-            active = st.session_state.ytm_nav == key
-            btn_style = "background:#ff0000;border-color:#ff0000;" if active else ""
-            if st.button(label, key=f"ytm_nav_{key}", use_container_width=True):
-                st.session_state.ytm_nav = key
+        with np3:
+            if st.button("⏹ Stop", key="ytm_stop", use_container_width=True):
+                st.session_state.now_playing_id = None
                 st.rerun()
 
-    st.markdown("<div style='height:1px;background:#333;margin:4px 0 16px;'></div>",
-                unsafe_allow_html=True)
-    nav = st.session_state.ytm_nav
+    # ════════════════════════════════════════════════════════════════════
+    # GENRE CHIPS ROW
+    # ════════════════════════════════════════════════════════════════════
+    GENRES = ["Trending🔥","Pop","Hip-Hop","Lo-fi","Tamil","Malayalam","Bollywood","K-Pop","Jazz","Rock","EDM","Classical"]
+    st.markdown('<div class="ytm-chip-row">' +
+        "".join(f'<span class="ytm-chip">{g}</span>' for g in GENRES) +
+        "</div>", unsafe_allow_html=True)
+
+    chip_cols = st.columns(len(GENRES))
+    for ci, genre in enumerate(GENRES):
+        with chip_cols[ci]:
+            if st.button(genre, key=f"chip_{genre}", use_container_width=True):
+                q = "trending music india" if genre.startswith("Trending") else genre
+                with st.spinner(f"Loading {genre}…"):
+                    st.session_state.music_search_results = do_search(q, 16)
+                    st.session_state.music_search_query   = genre
+                st.rerun()
+
+    # ════════════════════════════════════════════════════════════════════
+    # MAIN TABS — YTM style
+    # ════════════════════════════════════════════════════════════════════
+    music_tabs = st.tabs([
+        "🏠 Home", "🔍 Search", "❤️ Liked", "📚 Playlists",
+        "📺 Subscriptions", "🎵 Jam", "🔢 Queue"
+    ])
 
     # ══ HOME ══════════════════════════════════════════════════════════════════
-    if nav == "home":
-        # Quick genre chips
-        genres = ["All","Pop","Hip-Hop","Lo-fi","Tamil","Malayalam",
-                  "Bollywood","K-Pop","Indie","Jazz","Classical","Rock"]
-        chips_html = "<div style='margin-bottom:16px;'>"
-        for g in genres:
-            chips_html += f"<span class='ytm-chip'>{g}</span>"
-        chips_html += "</div>"
-        st.markdown(chips_html, unsafe_allow_html=True)
-
-        rc1, rc2 = st.columns([5,1])
-        with rc1:
-            st.markdown("<div class='ytm-section-title'>🔥 Trending Music</div>",
+    with music_tabs[0]:
+        rh1, rh2 = st.columns([5,1])
+        with rh1:
+            st.markdown(f"<div class='ytm-section-title'>🔥 Trending Music</div>",
                         unsafe_allow_html=True)
-        with rc2:
-            if st.button("Refresh", key="ytm_refresh_home"):
-                st.session_state.pop("ytm_trending", None); st.rerun()
+        with rh2:
+            if st.button("🔄 Refresh", key="ytm_refresh_home"):
+                st.session_state.pop("home_trending", None)
+                st.rerun()
+        if not is_yt_connected and not HAS_YT_KEY:
+            st.markdown(f"""
+<div style='background:{_T['ytm_card']};border:1px solid rgba(255,0,0,0.25);border-radius:12px;
+padding:24px;text-align:center;'>
+  <div style='font-size:3rem;'>🎵</div>
+  <div style='color:{_T['ytm_txt']};font-size:1.1rem;font-weight:600;margin:10px 0;'>Connect to start listening</div>
+  <div style='color:{_T['ytm_txt2']};font-size:.9rem;'>Connect your Google account above, or add a YOUTUBE_API_KEY to Streamlit secrets.</div>
+</div>""", unsafe_allow_html=True)
+        else:
+            if "home_trending" not in st.session_state:
+                with st.spinner("Loading trending…"):
+                    st.session_state.home_trending = do_trending(24)
+            render_ytm_grid(st.session_state.home_trending, cols=4, prefix="home")
 
-        if "ytm_trending" not in st.session_state:
-            with st.spinner("Loading…"):
-                st.session_state.ytm_trending = _yt_trending(16)
-        ytm_grid(st.session_state.ytm_trending, cols=4, prefix="home")
+    # ══ SEARCH ════════════════════════════════════════════════════════════════
+    with music_tabs[1]:
+        sq1, sq2 = st.columns([5, 1])
+        with sq1:
+            st.markdown('<div class="ytm-search-bar">', unsafe_allow_html=True)
+            search_q = st.text_input(
+                "", placeholder="🔍  Search songs, artists, albums…",
+                label_visibility="collapsed", key="ytm_search_input",
+                value=st.session_state.music_search_query)
+            st.markdown("</div>", unsafe_allow_html=True)
+        with sq2:
+            go = st.button("Search", use_container_width=True, key="ytm_search_go")
 
-        if is_connected:
-            st.markdown("<div class='ytm-section-title'>🎵 From Your Liked Songs</div>",
-                        unsafe_allow_html=True)
-            liked_preview = st.session_state.get("yt_liked_cache", [])[:8]
-            if liked_preview:
-                ytm_list(liked_preview, prefix="home_lk")
-            else:
-                st.markdown("<p style='color:#aaa;'>Go to Liked tab to load your songs.</p>",
-                            unsafe_allow_html=True)
-
-    # ══ EXPLORE / SEARCH ══════════════════════════════════════════════════════
-    elif nav in ("explore", "search"):
-        st.markdown("<div class='ytm-section-title'>🔍 Search</div>",
-                    unsafe_allow_html=True)
-        # Genre quick picks
-        genres_exp = ["Pop","Hip-Hop","Lo-fi","Tamil","Malayalam",
-                      "Bollywood","K-Pop","Jazz","Rock","Classical","Indie","R&B"]
-        st.markdown("<p style='color:#aaa;font-size:0.85rem;'>Browse by genre:</p>",
-                    unsafe_allow_html=True)
-        gcols = st.columns(6)
-        colors = ["#ff0000","#7b2fff","#00d4ff","#00ff88","#ffa500","#ff69b4",
-                  "#ff0000","#7b2fff","#00d4ff","#00ff88","#ffa500","#ff69b4"]
-        for gi2, genre in enumerate(genres_exp):
-            with gcols[gi2 % 6]:
-                st.markdown(f"""
-                <div style='background:{colors[gi2]}22;border:1px solid {colors[gi2]}44;
-                border-radius:8px;padding:14px;text-align:center;margin-bottom:8px;cursor:pointer;'>
-                    <div style='color:{colors[gi2]};font-weight:600;font-size:0.85rem;'>{genre}</div>
-                </div>""", unsafe_allow_html=True)
-                if st.button(f"Play {genre}", key=f"genre_exp_{genre}",
-                             use_container_width=True):
-                    fn = _yt_search if is_connected else youtube_search
-                    with st.spinner(""):
-                        st.session_state.music_search_results = fn(genre, 16)
-                    st.session_state.music_search_query = genre
-                    st.session_state.ytm_nav = "search"
-                    st.rerun()
+        if go and search_q:
+            st.session_state.music_search_query = search_q
+            with st.spinner("Searching…"):
+                st.session_state.music_search_results = do_search(search_q, 16)
 
         if st.session_state.music_search_results:
             q_label = st.session_state.music_search_query
-            st.markdown(f"<div class='ytm-section-title'>Results: {q_label}</div>",
+            st.markdown(f"<div class='ytm-section-title'>Results for {q_label}</div>",
                         unsafe_allow_html=True)
-            tab_grid, tab_list = st.tabs(["Grid view", "List view"])
-            with tab_grid:
-                ytm_grid(st.session_state.music_search_results, cols=4, prefix="exp")
-            with tab_list:
-                ytm_list(st.session_state.music_search_results, prefix="exp_l")
+            render_ytm_grid(st.session_state.music_search_results, cols=4, prefix="sr")
+        elif not go:
+            st.markdown(f"""
+<div style='text-align:center;padding:80px 20px;color:{_T['ytm_txt2']};'>
+  <div style='font-size:4rem;'>🔍</div>
+  <p style='font-size:1.1rem;'>Search for any song, artist or album</p>
+</div>""", unsafe_allow_html=True)
 
-    # ══ LIKED SONGS ═══════════════════════════════════════════════════════════
-    elif nav == "liked":
-        lkh1, lkh2, lkh3 = st.columns([4,1,1])
-        with lkh1:
-            st.markdown("<div class='ytm-section-title'>❤️ Liked Songs</div>",
-                        unsafe_allow_html=True)
-        with lkh2:
-            if st.button("🔄 Refresh", key="ytm_refresh_liked"):
-                st.session_state.pop("yt_liked_cache", None); st.rerun()
-        with lkh3:
-            lk_view = st.selectbox("View", ["Grid","List"],
-                                   key="lk_view_sel", label_visibility="collapsed")
-
-        if is_connected:
-            if "yt_liked_cache" not in st.session_state:
-                with st.spinner("Loading liked songs…"):
-                    st.session_state.yt_liked_cache = _yt_liked(50)
-            items = st.session_state.yt_liked_cache
-            if lk_view == "Grid":
-                ytm_grid(items, cols=4, prefix="lk")
-            else:
-                # Play all banner
-                if items:
-                    pb1, pb2 = st.columns([1,6])
-                    with pb1:
-                        if st.button("▶ Play All", use_container_width=True, key="lk_play_all"):
-                            first = items[0]
-                            _play(first["id"]["videoId"],
-                                  first["snippet"].get("title",""),
-                                  first["snippet"].get("channelTitle",""),
-                                  _thumb(first["snippet"]))
-                            st.session_state.queue = [
-                                {"id":x["id"]["videoId"],
-                                 "title":x["snippet"].get("title",""),
-                                 "artist":x["snippet"].get("channelTitle",""),
-                                 "thumb":_thumb(x["snippet"])} for x in items[1:]]
-                            st.rerun()
-                ytm_list(items, prefix="lk_l")
-        else:
-            # In-app saved songs
-            st.markdown("<p style='color:#aaa;margin-bottom:12px;'>Connect Google to see your real YouTube liked songs.</p>",
-                        unsafe_allow_html=True)
-            saved = get_liked_songs(st.session_state.user)
-            if not saved:
-                st.markdown("<p style='color:#555;text-align:center;padding:40px;'>"
-                            "No saved songs yet. Use ❤️ Save while a track is playing.</p>",
+    # ══ LIKED ═════════════════════════════════════════════════════════════════
+    with music_tabs[2]:
+        if is_yt_connected:
+            lh1, lh2 = st.columns([5,1])
+            with lh1:
+                st.markdown("<div class='ytm-section-title'>❤️ Your Liked Songs</div>",
                             unsafe_allow_html=True)
+            with lh2:
+                if st.button("🔄", key="ytm_refresh_liked"):
+                    st.session_state.pop("yt_liked_cache", None)
+                    st.rerun()
+            if "yt_liked_cache" not in st.session_state:
+                with st.spinner("Fetching liked songs…"):
+                    st.session_state.yt_liked_cache = yt_liked(50)
+            render_ytm_tracklist(st.session_state.yt_liked_cache, prefix="lk")
+        else:
+            st.markdown("<div class='ytm-section-title'>❤️ Saved Songs</div>",
+                        unsafe_allow_html=True)
+            st.info("Connect Google to see your real YouTube liked songs.")
+            liked_local = get_liked_songs(st.session_state.user)
+            if liked_local:
+                items_local = [{"id":{"videoId":s["video_id"]},
+                                "snippet":{"title":s["title"],"channelTitle":s["artist"],
+                                           "thumbnails":{"medium":{"url":s.get("thumbnail","")}}}}
+                               for s in liked_local]
+                render_ytm_tracklist(items_local, prefix="lk_local")
             else:
-                for song in saved:
-                    sc1,sc2,sc3,sc4 = st.columns([1,5,1,1])
-                    with sc1:
-                        if song.get("thumbnail"):
-                            st.markdown(f"<img src='{song['thumbnail']}' style='width:48px;"
-                                        f"height:48px;border-radius:4px;object-fit:cover;'>",
-                                        unsafe_allow_html=True)
-                    with sc2:
-                        st.markdown(f"<div style='color:#fff;font-size:0.88rem;font-weight:500;"
-                                    f"padding-top:4px;'>{song['title']}</div>"
-                                    f"<div style='color:#aaa;font-size:0.78rem;'>{song['artist']}</div>",
-                                    unsafe_allow_html=True)
-                    with sc3:
-                        if st.button("▶", key=f"sv_p_{song['video_id']}", use_container_width=True):
-                            _play(song["video_id"],song["title"],song["artist"],
-                                  song.get("thumbnail","")); st.rerun()
-                    with sc4:
-                        if st.button("🗑", key=f"sv_d_{song['video_id']}", use_container_width=True):
-                            unlike_song(st.session_state.user, song["video_id"]); st.rerun()
-                    st.markdown("<div style='height:1px;background:#1e1e1e;margin:2px 0;'></div>",
-                                unsafe_allow_html=True)
-
+                st.markdown(f"<p style='color:{_T['ytm_txt2']};'>No saved songs yet.</p>",
+                            unsafe_allow_html=True)
             if st.session_state.now_playing_id:
-                st.markdown("---")
-                if st.button(f"❤️ Save current: {st.session_state.now_playing_title[:40]}",
-                             use_container_width=True, key="save_current_ytm"):
-                    like_song(st.session_state.user, st.session_state.now_playing_id,
+                if st.button(f"❤️  Save: {st.session_state.now_playing_title[:40]}",
+                             use_container_width=True, key="ytm_like_current"):
+                    like_song(st.session_state.user,
+                              st.session_state.now_playing_id,
                               st.session_state.now_playing_title,
                               st.session_state.now_playing_artist,
                               st.session_state.now_playing_thumb)
-                    st.success("Saved!"); st.rerun()
+                    st.success("❤️ Saved!")
+                    st.rerun()
 
     # ══ PLAYLISTS ═════════════════════════════════════════════════════════════
-    elif nav == "playlists":
-        st.markdown("<div class='ytm-section-title'>📚 Playlists</div>",
-                    unsafe_allow_html=True)
-        if is_connected:
-            prc1, prc2 = st.columns([5,1])
-            with prc2:
-                if st.button("🔄", key="ytm_ref_pl"):
+    with music_tabs[3]:
+        if is_yt_connected:
+            ph1, ph2 = st.columns([5,1])
+            with ph1:
+                st.markdown("<div class='ytm-section-title'>📚 Your YouTube Playlists</div>",
+                            unsafe_allow_html=True)
+            with ph2:
+                if st.button("🔄", key="ytm_refresh_pl"):
                     st.session_state.pop("yt_playlists_cache", None)
-                    st.session_state.pop("ytm_open_pl", None); st.rerun()
-
+                    st.session_state.pop("yt_pl_items_cache", None)
+                    st.rerun()
             if "yt_playlists_cache" not in st.session_state:
                 with st.spinner("Loading playlists…"):
-                    st.session_state.yt_playlists_cache = _yt_playlists(50)
-
+                    st.session_state.yt_playlists_cache = yt_playlists(50)
             pls = st.session_state.yt_playlists_cache
             if not pls:
-                st.markdown("<p style='color:#555;'>No playlists on your account.</p>",
+                st.markdown(f"<p style='color:{_T['ytm_txt2']};'>No playlists found.</p>",
                             unsafe_allow_html=True)
             else:
                 pl_left, pl_right = st.columns([1, 2])
@@ -1842,314 +1957,245 @@ elif st.session_state.current_page == "Music":
                     for pl in pls:
                         pl_id    = pl["id"]
                         pl_title = pl["snippet"]["title"]
+                        pl_thumb = pl["snippet"].get("thumbnails",{}).get("medium",{}).get("url","")
                         pl_count = pl.get("contentDetails",{}).get("itemCount","?")
-                        pl_thumb = _thumb(pl["snippet"])
-                        plc1, plc2 = st.columns([1,3])
-                        with plc1:
-                            if pl_thumb:
-                                st.markdown(f"<img src='{pl_thumb}' style='width:52px;"
-                                            f"height:52px;border-radius:4px;object-fit:cover;'>",
-                                            unsafe_allow_html=True)
-                        with plc2:
-                            st.markdown(f"<div style='color:#fff;font-size:0.85rem;"
-                                        f"font-weight:500;padding-top:4px;'>{pl_title[:24]}</div>"
-                                        f"<div style='color:#aaa;font-size:0.75rem;'>{pl_count} songs</div>",
-                                        unsafe_allow_html=True)
-                        if st.button(f"Open", key=f"open_ytpl_{pl_id}", use_container_width=True):
+                        row_html = f"""
+<div class="ytm-playlist-row">
+  {"<img src='" + pl_thumb + "' class='ytm-playlist-thumb'/>" if pl_thumb else "<div class='ytm-playlist-thumb'></div>"}
+  <div>
+    <div style="color:{_T['ytm_txt']};font-size:.88rem;font-weight:600;">{pl_title[:28]}</div>
+    <div style="color:{_T['ytm_txt2']};font-size:.76rem;">{pl_count} tracks</div>
+  </div>
+</div>"""
+                        st.markdown(row_html, unsafe_allow_html=True)
+                        if st.button("Open", key=f"yt_pl_{pl_id}", use_container_width=True):
                             with st.spinner("Loading…"):
-                                st.session_state.ytm_open_pl = {
-                                    "id": pl_id, "title": pl_title,
-                                    "items": _yt_pl_items(pl_id, 50)
-                                }
+                                st.session_state.yt_pl_items_cache = yt_pl_items(pl_id, 50)
+                                st.session_state.active_yt_pl_name = pl_title
                             st.rerun()
-                        st.markdown("<div style='height:1px;background:#1e1e1e;margin:4px 0;'></div>",
-                                    unsafe_allow_html=True)
 
                 with pl_right:
-                    open_pl = st.session_state.get("ytm_open_pl")
-                    if open_pl:
-                        pl_items = open_pl["items"]
-                        st.markdown(f"<div class='ytm-section-title'>📀 {open_pl['title']}"
-                                    f" <span style='color:#aaa;font-size:0.8rem;font-weight:400;'>"
-                                    f"({len(pl_items)} tracks)</span></div>",
+                    if st.session_state.get("yt_pl_items_cache") is not None:
+                        pl_name  = st.session_state.get("active_yt_pl_name","Playlist")
+                        pl_items = st.session_state.yt_pl_items_cache
+                        st.markdown(f"<div class='ytm-section-title'>📀 {pl_name}</div>",
                                     unsafe_allow_html=True)
-                        if pl_items:
-                            if st.button("▶ Play All", use_container_width=True, key="ytpl_all"):
-                                f0 = pl_items[0]
-                                _play(f0["id"]["videoId"],
-                                      f0["snippet"].get("title",""),
-                                      f0["snippet"].get("channelTitle",""),
-                                      _thumb(f0["snippet"]))
+                        if st.button("▶ Play All", use_container_width=True, key="ytm_play_all_pl"):
+                            if pl_items:
+                                first = pl_items[0]
+                                _play(first["id"]["videoId"],
+                                      first["snippet"].get("title",""),
+                                      first["snippet"].get("channelTitle",""),
+                                      (first["snippet"].get("thumbnails",{})
+                                       .get("medium",{}).get("url","")))
                                 st.session_state.queue = [
-                                    {"id":x["id"]["videoId"],
-                                     "title":x["snippet"].get("title",""),
-                                     "artist":x["snippet"].get("channelTitle",""),
-                                     "thumb":_thumb(x["snippet"])} for x in pl_items[1:]]
+                                    {"id":i["id"]["videoId"],
+                                     "title":i["snippet"].get("title",""),
+                                     "artist":i["snippet"].get("channelTitle",""),
+                                     "thumb":(i["snippet"].get("thumbnails",{})
+                                              .get("medium",{}).get("url",""))}
+                                    for i in pl_items[1:]]
                                 st.rerun()
-                        ytm_list(pl_items, prefix="ytpl_items")
+                        render_ytm_tracklist(pl_items, prefix="ytpl")
                     else:
-                        st.markdown("<p style='color:#555;padding:40px;text-align:center;'>"
-                                    "Select a playlist on the left</p>",
-                                    unsafe_allow_html=True)
+                        st.markdown(f"""
+<div style='text-align:center;padding:60px;color:{_T['ytm_txt2']};'>
+  <div style='font-size:3rem;'>📀</div>
+  <p>Select a playlist to view tracks</p>
+</div>""", unsafe_allow_html=True)
         else:
             # In-app playlists
-            st.markdown("<p style='color:#aaa;margin-bottom:12px;'>Connect Google to access your YouTube playlists.</p>",
+            st.markdown("<div class='ytm-section-title'>📀 My Playlists</div>",
                         unsafe_allow_html=True)
-            pls_app = get_playlists(st.session_state.user)
-            ipl_l, ipl_r = st.columns([1,2])
-            with ipl_l:
-                new_pl = st.text_input("New playlist name", key="ytm_new_pl",
-                                       placeholder="My playlist")
-                if st.button("➕ Create", use_container_width=True, key="ytm_create_pl"):
-                    if new_pl.strip():
-                        save_playlist(st.session_state.user, new_pl.strip(), [])
-                        st.success("Created!"); st.rerun()
-                st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-                for pl in pls_app:
-                    ipc1, ipc2 = st.columns([4,1])
-                    with ipc1:
-                        if st.button(f"📀 {pl['name']}", key=f"ipl_{pl['name']}",
+            st.info("Connect Google for real YouTube playlists.")
+            iap_left, iap_right = st.columns([1, 2])
+            with iap_left:
+                npn = st.text_input("New playlist name", key="new_pl_input",
+                                    placeholder="e.g. Chill Vibes")
+                if st.button("➕ Create", key="create_pl", use_container_width=True):
+                    if npn.strip():
+                        save_playlist(st.session_state.user, npn.strip(), [])
+                        st.success("Created!")
+                        st.rerun()
+                st.markdown("---")
+                for pl in get_playlists(st.session_state.user):
+                    pc1, pc2 = st.columns([3,1])
+                    with pc1:
+                        if st.button(f"📀 {pl['name']}", key=f"open_pl_{pl['name']}",
                                      use_container_width=True):
-                            st.session_state.active_playlist_name = pl["name"]; st.rerun()
-                    with ipc2:
-                        if st.button("✕", key=f"ipl_d_{pl['name']}", use_container_width=True):
-                            delete_playlist(st.session_state.user, pl["name"])
-                            if st.session_state.active_playlist_name == pl["name"]:
-                                st.session_state.active_playlist_name = None
+                            st.session_state.active_playlist_name = pl["name"]
                             st.rerun()
-            with ipl_r:
-                active_pl = st.session_state.active_playlist_name
-                if active_pl:
-                    pl_data = next((p for p in pls_app if p["name"]==active_pl), None)
+                    with pc2:
+                        if st.button("🗑", key=f"del_pl_{pl['name']}",
+                                     use_container_width=True):
+                            delete_playlist(st.session_state.user, pl["name"])
+                            st.rerun()
+            with iap_right:
+                act = st.session_state.active_playlist_name
+                if act:
+                    playlists_local = get_playlists(st.session_state.user)
+                    pl_data = next((p for p in playlists_local if p["name"] == act), None)
                     if pl_data:
                         songs = pl_data.get("songs",[])
-                        st.markdown(f"<div class='ytm-section-title'>📀 {active_pl} "
-                                    f"<span style='color:#aaa;font-size:0.8rem;font-weight:400;'>"
-                                    f"({len(songs)} tracks)</span></div>",
+                        st.markdown(f"<div class='ytm-section-title'>📀 {act} ({len(songs)})</div>",
                                     unsafe_allow_html=True)
                         if st.session_state.now_playing_id:
-                            if st.button("➕ Add current track", use_container_width=True,
-                                         key="ipl_add_cur"):
-                                new_s = {"id":st.session_state.now_playing_id,
-                                         "title":st.session_state.now_playing_title,
-                                         "artist":st.session_state.now_playing_artist,
-                                         "thumb":st.session_state.now_playing_thumb}
-                                if not any(s["id"]==new_s["id"] for s in songs):
-                                    songs.append(new_s)
-                                    save_playlist(st.session_state.user, active_pl, songs)
-                                    st.success("Added!"); st.rerun()
-                        if songs and st.button("▶ Play All", use_container_width=True,
-                                               key="ipl_play_all"):
-                            _play(songs[0]["id"],songs[0]["title"],
-                                  songs[0].get("artist",""),songs[0].get("thumb",""))
-                            st.session_state.queue = songs[1:]; st.rerun()
-                        for i,s in enumerate(songs):
-                            isc1,isc2,isc3,isc4 = st.columns([1,5,1,1])
-                            with isc1:
-                                if s.get("thumb"):
-                                    st.markdown(f"<img src='{s['thumb']}' style='width:44px;"
-                                                f"height:44px;border-radius:4px;object-fit:cover;'>",
-                                                unsafe_allow_html=True)
-                            with isc2:
-                                st.markdown(f"<div style='color:#fff;font-size:0.85rem;"
-                                            f"padding-top:4px;'>{s['title']}</div>"
-                                            f"<div style='color:#aaa;font-size:0.75rem;'>{s.get('artist','')}</div>",
-                                            unsafe_allow_html=True)
-                            with isc3:
-                                if st.button("▶", key=f"ipl_p_{i}", use_container_width=True):
-                                    _play(s["id"],s["title"],s.get("artist",""),s.get("thumb",""))
-                                    st.session_state.queue = songs[i+1:]; st.rerun()
-                            with isc4:
-                                if st.button("✕", key=f"ipl_r_{i}", use_container_width=True):
-                                    songs.pop(i)
-                                    save_playlist(st.session_state.user, active_pl, songs); st.rerun()
-                            st.markdown("<div style='height:1px;background:#1e1e1e;margin:2px 0;'></div>",
-                                        unsafe_allow_html=True)
+                            if st.button("➕ Add current track",
+                                         use_container_width=True, key="add_to_pl"):
+                                ns = {"id":st.session_state.now_playing_id,
+                                      "title":st.session_state.now_playing_title,
+                                      "artist":st.session_state.now_playing_artist,
+                                      "thumb":st.session_state.now_playing_thumb}
+                                if not any(s["id"]==ns["id"] for s in songs):
+                                    songs.append(ns)
+                                    save_playlist(st.session_state.user, act, songs)
+                                    st.success("Added!")
+                                    st.rerun()
+                        if songs:
+                            if st.button("▶ Play All", use_container_width=True,
+                                         key="play_all_iap"):
+                                _play(songs[0]["id"],songs[0]["title"],
+                                      songs[0].get("artist",""),songs[0].get("thumb",""))
+                                st.session_state.queue = songs[1:]
+                                st.rerun()
+                            items_iap = [{"id":{"videoId":s["id"]},
+                                          "snippet":{"title":s["title"],
+                                                     "channelTitle":s.get("artist",""),
+                                                     "thumbnails":{"medium":{"url":s.get("thumb","")}}}}
+                                         for s in songs]
+                            render_ytm_tracklist(items_iap, prefix="iap")
 
     # ══ SUBSCRIPTIONS ═════════════════════════════════════════════════════════
-    elif nav == "subs":
-        sc1h, sc2h = st.columns([5,1])
-        with sc1h:
-            st.markdown("<div class='ytm-section-title'>📺 Subscriptions</div>",
-                        unsafe_allow_html=True)
-        with sc2h:
-            if st.button("🔄", key="ytm_ref_subs"):
-                st.session_state.pop("yt_subs_cache", None); st.rerun()
-
-        if is_connected:
+    with music_tabs[4]:
+        if is_yt_connected:
+            sh1, sh2 = st.columns([5,1])
+            with sh1:
+                st.markdown("<div class='ytm-section-title'>📺 Your Subscriptions</div>",
+                            unsafe_allow_html=True)
+            with sh2:
+                if st.button("🔄", key="ytm_refresh_subs"):
+                    st.session_state.pop("yt_subs_cache", None)
+                    st.rerun()
             if "yt_subs_cache" not in st.session_state:
-                with st.spinner("Loading…"):
-                    st.session_state.yt_subs_cache = _yt_subs(50)
+                with st.spinner("Loading subscriptions…"):
+                    st.session_state.yt_subs_cache = yt_subs(50)
             subs = st.session_state.yt_subs_cache
             if not subs:
-                st.markdown("<p style='color:#555;'>No subscriptions found.</p>",
+                st.markdown(f"<p style='color:{_T['ytm_txt2']};'>No subscriptions found.</p>",
                             unsafe_allow_html=True)
             else:
-                # Show as badge grid
-                n_cols = 6
-                rows = [subs[i:i+n_cols] for i in range(0, len(subs), n_cols)]
-                for row in rows:
-                    sub_cols = st.columns(n_cols)
-                    for si, sub in enumerate(row):
-                        snip = sub["snippet"]
-                        ch   = snip.get("title","")
-                        thmb = _thumb(snip)
-                        with sub_cols[si]:
-                            if thmb:
-                                st.markdown(f"""
-                                <div style='text-align:center;'>
-                                  <img src='{thmb}' style='width:60px;height:60px;
-                                  border-radius:50%;object-fit:cover;
-                                  border:2px solid #333;margin:0 auto;display:block;'>
-                                  <div style='color:#fff;font-size:0.74rem;margin-top:6px;
-                                  overflow:hidden;text-overflow:ellipsis;
-                                  white-space:nowrap;'>{ch[:16]}</div>
-                                </div>""", unsafe_allow_html=True)
-                            if st.button("Browse", key=f"sub_{si}_{ch[:8]}",
-                                         use_container_width=True):
-                                fn = _yt_search if is_connected else youtube_search
-                                st.session_state.music_search_results = fn(ch, 16)
-                                st.session_state.music_search_query = ch
-                                st.session_state.ytm_nav = "search"; st.rerun()
-        else:
-            st.info("Connect your Google account to see your subscriptions.")
-
-    # ══ LIBRARY ═══════════════════════════════════════════════════════════════
-    elif nav == "library":
-        st.markdown("<div class='ytm-section-title'>📋 Library</div>",
-                    unsafe_allow_html=True)
-        if is_connected:
-            lib_t1, lib_t2, lib_t3 = st.tabs(["❤️ Liked","📚 Playlists","📺 Subs"])
-            with lib_t1:
-                items = st.session_state.get("yt_liked_cache",[])
-                if items:
-                    ytm_list(items[:10], prefix="lib_lk")
-                    if st.button("See all liked →", use_container_width=True, key="lib_see_liked"):
-                        st.session_state.ytm_nav="liked"; st.rerun()
-                else:
-                    if st.button("Load liked songs", use_container_width=True, key="lib_load_lk"):
-                        with st.spinner(""):
-                            st.session_state.yt_liked_cache = _yt_liked(50)
-                        st.rerun()
-            with lib_t2:
-                plc = st.session_state.get("yt_playlists_cache",[])
-                for pl in plc[:8]:
-                    st.markdown(f"<div style='color:#fff;padding:6px 0;'>📀 {pl['snippet']['title']}"
-                                f"<span style='color:#aaa;font-size:0.78rem;margin-left:8px;'>"
-                                f"({pl.get('contentDetails',{}).get('itemCount','?')} tracks)</span></div>"
-                                f"<div style='height:1px;background:#1e1e1e;'></div>",
-                                unsafe_allow_html=True)
-                if st.button("See all playlists →", use_container_width=True, key="lib_see_pl"):
-                    st.session_state.ytm_nav="playlists"; st.rerun()
-            with lib_t3:
-                sc2 = st.session_state.get("yt_subs_cache",[])
-                st.markdown(f"<p style='color:#aaa;'>{len(sc2)} subscriptions</p>",
+                sub_cols = st.columns(5)
+                for si, sub in enumerate(subs):
+                    snip     = sub["snippet"]
+                    ch_title = snip.get("title","")
+                    ch_thumb = snip.get("thumbnails",{}).get("medium",{}).get("url","")
+                    with sub_cols[si % 5]:
+                        if ch_thumb:
+                            st.image(ch_thumb, width=70)
+                        st.markdown(
+                            f"<div style='color:{_T['ytm_txt']};font-size:.76rem;text-align:center;"
+                            f"overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>{ch_title}</div>",
                             unsafe_allow_html=True)
-                if st.button("See all subscriptions →", use_container_width=True, key="lib_see_subs"):
-                    st.session_state.ytm_nav="subs"; st.rerun()
+                        if st.button("▶", key=f"sub_{si}", use_container_width=True):
+                            st.session_state.music_search_query = ch_title
+                            st.session_state.music_search_results = do_search(ch_title, 16)
+                            st.rerun()
         else:
-            st.info("Connect your Google account to access your full library.")
+            st.info("Connect your Google account to see your YouTube subscriptions.")
 
     # ══ JAM ═══════════════════════════════════════════════════════════════════
-    elif nav == "jam":
-        st.markdown("<div class='ytm-section-title'>🎵 Jam — Listen Together</div>",
+    with music_tabs[5]:
+        st.markdown("<div class='ytm-section-title'>🎵 Music Jam — Listen Together</div>",
                     unsafe_allow_html=True)
-        st.markdown("<p style='color:#aaa;'>Share what you're playing with friends in real time.</p>",
+        st.markdown(f"<p style='color:{_T['ytm_txt2']};'>Share what you're playing with a friend in real time.</p>",
                     unsafe_allow_html=True)
-
         if st.session_state.now_playing_id:
             st.markdown(f"""
-            <div style='background:#1e1e1e;border:1px solid #333;border-radius:10px;
-            padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;'>
-                <img src='{st.session_state.now_playing_thumb}' style='width:64px;height:64px;
-                border-radius:6px;object-fit:cover;'>
-                <div>
-                    <div style='color:#fff;font-weight:600;'>{st.session_state.now_playing_title}</div>
-                    <div style='color:#aaa;font-size:0.82rem;'>{st.session_state.now_playing_artist}</div>
-                    <div style='color:#ff0000;font-size:0.75rem;margin-top:4px;'>▶ NOW PLAYING</div>
-                </div>
-            </div>""", unsafe_allow_html=True)
+<div style='background:{_T['ytm_card']};border:1px solid rgba(255,0,0,0.25);
+border-radius:12px;padding:16px;margin-bottom:16px;'>
+  <div style='color:{_T['ytm_red']};font-weight:700;margin-bottom:6px;'>🎵 Now Playing</div>
+  <div style='color:{_T['ytm_txt']};font-size:.95rem;font-weight:600;'>
+      {st.session_state.now_playing_title}</div>
+  <div style='color:{_T['ytm_txt2']};font-size:.82rem;'>
+      {st.session_state.now_playing_artist}</div>
+</div>""", unsafe_allow_html=True)
             my_u = get_user(st.session_state.user)
-            ftj  = my_u.get("friends",[]) if my_u else []
-            if not ftj:
+            jam_friends = list(my_u.get("friends") or []) if my_u else []
+            if not jam_friends:
                 st.info("Add friends to jam with them.")
             else:
-                st.markdown("<p style='color:#aaa;font-size:0.88rem;'>Send jam to:</p>",
-                            unsafe_allow_html=True)
-                jam_cols = st.columns(min(len(ftj), 5))
-                for ji, f in enumerate(ftj):
-                    with jam_cols[ji % 5]:
-                        if st.button(f"🎵 {f}", key=f"jam_{f}", use_container_width=True):
+                jam_cols = st.columns(min(len(jam_friends), 4))
+                for ji, f in enumerate(jam_friends):
+                    with jam_cols[ji % 4]:
+                        if st.button(f"🎵 Jam: {f}", key=f"jam_{f}",
+                                     use_container_width=True):
                             send_jam(st.session_state.user, f,
                                      st.session_state.now_playing_id,
                                      st.session_state.now_playing_title,
                                      st.session_state.now_playing_thumb)
-                            st.success(f"Jam sent to {f}!")
+                            st.success(f"Sent jam to {f}!")
         else:
-            st.markdown("""
-            <div style='text-align:center;padding:60px;color:#555;'>
-                <div style='font-size:3rem;'>🎵</div>
-                <p>Play a song first, then jam with friends</p>
-            </div>""", unsafe_allow_html=True)
+            st.markdown(f"""
+<div style='text-align:center;padding:60px;color:{_T['ytm_txt2']};'>
+  <div style='font-size:3rem;'>🎵</div>
+  <p>Play a song first, then share the jam here</p>
+</div>""", unsafe_allow_html=True)
 
         inc_jam = get_jam(st.session_state.user)
         if inc_jam:
             st.markdown("---")
-            st.markdown(f"<div style='color:#00ff88;font-weight:600;font-size:0.9rem;'>"
-                        f"📨 {inc_jam['host']} is jamming with you!</div>",
-                        unsafe_allow_html=True)
-            if inc_jam.get("thumbnail"):
-                st.markdown(f"<img src='{inc_jam['thumbnail']}' style='width:120px;"
-                            f"border-radius:6px;margin:8px 0;'>", unsafe_allow_html=True)
-            jt = inc_jam["title"]
-            if st.button(f"▶ Join: {jt[:40]}", use_container_width=True, key="join_jam"):
-                _play(inc_jam["video_id"], jt, inc_jam["host"], inc_jam.get("thumbnail",""))
+            st.markdown(
+                f"<h5 style='color:#00c850;'>📨 {inc_jam['host']} invited you to jam!</h5>",
+                unsafe_allow_html=True)
+            if st.button(f"▶ Play: {inc_jam['title']}", key="join_jam_music",
+                         use_container_width=True):
+                _play(inc_jam["video_id"], inc_jam["title"],
+                      inc_jam["host"], inc_jam["thumbnail"])
                 st.rerun()
 
     # ══ QUEUE ═════════════════════════════════════════════════════════════════
-    elif nav == "queue":
-        qh1, qh2 = st.columns([5,1])
-        with qh1:
-            st.markdown(f"<div class='ytm-section-title'>🔢 Queue "
-                        f"<span style='color:#aaa;font-size:0.85rem;font-weight:400;'>"
-                        f"({len(st.session_state.queue)} tracks)</span></div>",
-                        unsafe_allow_html=True)
-        with qh2:
-            if st.session_state.queue:
-                if st.button("Clear all", key="ytm_clear_q", use_container_width=True):
-                    st.session_state.queue = []; st.rerun()
-
+    with music_tabs[6]:
+        q_count = len(st.session_state.queue)
+        st.markdown(f"<div class='ytm-section-title'>🔢 Queue ({q_count} tracks)</div>",
+                    unsafe_allow_html=True)
         if not st.session_state.queue:
-            st.markdown("""
-            <div style='text-align:center;padding:60px;color:#555;'>
-                <div style='font-size:3rem;🎵</div>
-                <p>Your queue is empty — hit ＋ on any track</p>
-            </div>""", unsafe_allow_html=True)
+            st.markdown(f"""
+<div style='text-align:center;padding:60px;color:{_T['ytm_txt2']};'>
+  <div style='font-size:3rem;'>📋</div>
+  <p>Queue is empty — hit ＋Queue on any track</p>
+</div>""", unsafe_allow_html=True)
         else:
+            if st.button("🗑  Clear Queue", key="ytm_clear_q"):
+                st.session_state.queue = []
+                st.rerun()
             for qi, track in enumerate(st.session_state.queue):
-                qc1,qc2,qc3,qc4,qc5 = st.columns([1,1,4,1,1])
+                qc1, qc2, qc3, qc4 = st.columns([0.8, 5, 1.5, 1])
                 with qc1:
-                    st.markdown(f"<div style='color:#555;text-align:center;padding-top:14px;'>"
-                                f"{qi+1}</div>", unsafe_allow_html=True)
-                with qc2:
                     if track.get("thumb"):
-                        st.markdown(f"<img src='{track['thumb']}' style='width:44px;height:44px;"
-                                    f"border-radius:4px;object-fit:cover;'>", unsafe_allow_html=True)
+                        st.image(track["thumb"], width=48)
+                    st.markdown(
+                        f"<div style='color:{_T['ytm_txt2']};text-align:center;'>{qi+1}</div>",
+                        unsafe_allow_html=True)
+                with qc2:
+                    st.markdown(
+                        f"<div style='color:{_T['ytm_txt']};font-weight:500;'>{track['title']}</div>"
+                        f"<div style='color:{_T['ytm_txt2']};font-size:.78rem;'>{track.get('artist','')}</div>",
+                        unsafe_allow_html=True)
                 with qc3:
-                    st.markdown(f"<div style='color:#fff;font-size:0.87rem;padding-top:4px;'>"
-                                f"{track['title']}</div>"
-                                f"<div style='color:#aaa;font-size:0.76rem;'>{track.get('artist','')}</div>",
-                                unsafe_allow_html=True)
+                    if st.button("▶ Now", key=f"q_now_{qi}", use_container_width=True):
+                        _play(track["id"], track["title"],
+                              track.get("artist",""), track.get("thumb",""))
+                        st.session_state.queue.pop(qi)
+                        st.rerun()
                 with qc4:
-                    if st.button("▶", key=f"q_p_{qi}", use_container_width=True):
-                        _play(track["id"],track["title"],
-                              track.get("artist",""),track.get("thumb",""))
-                        st.session_state.queue.pop(qi); st.rerun()
-                with qc5:
-                    if st.button("✕", key=f"q_r_{qi}", use_container_width=True):
-                        st.session_state.queue.pop(qi); st.rerun()
-                st.markdown("<div style='height:1px;background:#1e1e1e;margin:2px 0;'></div>",
-                            unsafe_allow_html=True)
+                    if st.button("✕", key=f"q_rm_{qi}", use_container_width=True):
+                        st.session_state.queue.pop(qi)
+                        st.rerun()
+                st.markdown(
+                    f"<hr style='border:none;border-top:1px solid {_T['ytm_card2']};margin:2px 0;'>",
+                    unsafe_allow_html=True)
+
+
 
 # ─────────────────────────────────────────
 # 12. WEATHER PAGE — GPS only + Charts
