@@ -1097,7 +1097,7 @@ if not st.session_state.logged_in:
 # 8. SIDEBAR (logged in)
 # ─────────────────────────────────────────
 with st.sidebar:
-    st.markdown(f"<div class='sidebar-logo'>⚡ LAKSHMEEYAM AI</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='sidebar-logo'> A WEBSITE BY SERRNAND </div>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:rgba(255,255,255,0.5); text-align:center; font-size:0.85rem;'><span class='online-dot'></span>{st.session_state.user}</p>", unsafe_allow_html=True)
 
     pages = [
