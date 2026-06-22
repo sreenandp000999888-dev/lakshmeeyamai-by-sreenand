@@ -24,7 +24,7 @@ except ImportError:
 # ─────────────────────────────────────────
 # 1. PAGE CONFIG & STYLING
 # ─────────────────────────────────────────
-st.set_page_config(page_title="Lakshmeeyam AI", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="sreenand's AI", page_icon="🚀", layout="wide")
 
 # ── Google Analytics 4 via streamlit-analytics2 ───────────────────────────────
 # Injects GA4 into the real page <head> (not an iframe) so Google detects it.
@@ -986,21 +986,21 @@ if st.session_state.logged_in and not st.session_state.yt_connected:
 # 7. LOGIN / SIGNUP PAGE
 # ─────────────────────────────────────────
 if not st.session_state.logged_in:
-    st.markdown("<div class='hero-title'>🚀 LAKSHMEEYAM AI</div>", unsafe_allow_html=True)
-    st.markdown("<div class='hero-sub'>Next-Gen AI Platform by Sreenand</div>", unsafe_allow_html=True)
+    st.markdown("<div class='hero-title'>🚀 SREENAND AI</div>", unsafe_allow_html=True)
+    st.markdown("<div class='hero-sub'>a small website by Sreenand</div>", unsafe_allow_html=True)
 
     col_l, spacer, col_r = st.columns([1.4, 0.1, 1])
 
     with col_l:
         st.markdown("""
         <div class='main-box'>
-            <h2 style='color:#00d4ff; font-family:Orbitron,sans-serif;'>👨‍💻 About</h2>
+            <h2 style='color:#00d4ff; font-family:Orbitron,sans-serif;'>👨‍💻 About me</h2>
             <p style='color:rgba(255,255,255,0.8);'>
-                <b>Lakshmeeyam AI</b> is a full-stack AI ecosystem built by 
-                <span style='color:#00d4ff;'><b>Sreenand</b></span>, a 14-year-old developer from India.
+                <b>sreenand ai</b>it is a simple website  
+                <span style='color:#00d4ff;'><b>Sreenand</b></span>, i kmow to make a website <3.
             </p>
             <p style='color:rgba(255,255,255,0.6); font-size:0.9rem;'>
-                A hobby project combining AI, social networking, and real-time data.
+                A hobby project with a ai it is a test.
             </p>
             <hr style='border-color: rgba(0,212,255,0.2); margin: 15px 0;'>
             <div style='display:grid; grid-template-columns:1fr 1fr; gap:12px;'>
@@ -1222,8 +1222,8 @@ elif st.session_state.current_page == "AI Chat":
             st.markdown("""
             <div style='text-align:center; padding:60px 20px; color:rgba(255,255,255,0.3);'>
                 <div style='font-size:3rem;'>🤖</div>
-                <p>Start a conversation with Lakshmeeyam AI</p>
-                <p style='font-size:0.8rem;'>Powered by Groq • Ultra-fast inference</p>
+                <p>Start a conversation with the AI</p>
+                <p style='font-size:0.8rem;'>powered by groq</p>
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -1245,7 +1245,7 @@ elif st.session_state.current_page == "AI Chat":
                 system_prompt = {
                     "role": "system",
                     "content": (
-                        "You are Lakshmeeyam AI, a helpful and intelligent assistant. "
+                        "You are AI, a helpful and intelligent assistant. "
                         "You were created by Sreenand. "
                         "If anyone asks who created you, who made you, or who your creator is, "
                         "you must answer: 'I was created by Sreenand.' "
