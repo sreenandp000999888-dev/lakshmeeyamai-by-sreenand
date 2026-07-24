@@ -996,7 +996,7 @@ if not st.session_state.logged_in:
         <div class='main-box'>
             <h2 style='color:#00d4ff; font-family:Orbitron,sans-serif;'>👨‍💻 About me</h2>
             <p style='color:rgba(255,255,255,0.8);'>
-                <b>sreenand ai</b>it is a simple website  
+                <b>sreenand ai</b> it is a simple website  
                 <span style='color:#00d4ff;'><b>Sreenand</b></span>, i kmow to make a website <3.
             </p>
             <p style='color:rgba(255,255,255,0.6); font-size:0.9rem;'>
